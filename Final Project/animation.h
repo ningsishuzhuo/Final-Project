@@ -5,13 +5,14 @@
 
 class LogoAnimation {
 public:
-    static void showStudioLogo();//播放完整动画
+    static void showStudioLogo();
 
 private:
-    static void loadImages();//加载图片资源
-    static void playAnimation();//执行动画播放
-    static void freeImages();//释放图片内存
-    static IMAGE logo_images[3];//存储logo图片
+    static void loadImages();
+    static void playAnimation();
+    static void freeImages();
+    static IMAGE logo_images[3];
 };
 
-#endif#pragma once
+#endif
+

@@ -1,0 +1,131 @@
+#include "level_map_internal.h"
+
+#pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "Msimg32.lib")
+
+namespace LevelMapInternal {
+
+int g_cameraX = 0;
+int g_cameraY = 0;
+int g_playerX = 0;
+int g_playerY = 0;
+int g_currentCharacterIndex = 0;
+bool g_isMoving = false;
+bool g_isDashing = false;
+bool g_faceRight = true;
+int g_moveDirX = 1;
+int g_moveDirY = 0;
+int g_playerHp = 50;
+int g_playerMaxHp = 50;
+int g_playerArmor = 0;
+int g_playerMaxArmor = 0;
+bool g_playerIsDead = false;
+ULONGLONG g_playerDeathStartTick = 0;
+bool g_gameVictory = false;
+ULONGLONG g_gameVictoryStartTick = 0;
+float g_playerEnergy = static_cast<float>(kPlayerMaxEnergy);
+int g_playerMaxEnergy = kPlayerMaxEnergy;
+ULONGLONG g_dashStartTick = 0;
+ULONGLONG g_dashCooldownEndTick = 0;
+ULONGLONG g_playerLastDamageTick = 0;
+ULONGLONG g_playerArmorRegenTick = 0;
+ULONGLONG g_lastPlayerUpdateTick = 0;
+ULONGLONG g_lastAfterimageSpawnTick = 0;
+bool g_ultimateShiftPressedLastFrame = false;
+ULONGLONG g_characterUltimateNextCastTick[kCharacterCount] = { 0, 0, 0 };
+
+AnimatedGif g_idleGifs[kCharacterCount];
+AnimatedGif g_walkGifs[kCharacterCount];
+IMAGE g_playerDeathImages[kCharacterCount];
+bool g_playerDeathHasAlpha[kCharacterCount] = { false, false, false };
+IMAGE g_particleImage;
+bool g_particleHasAlpha = false;
+IMAGE g_playerHpIconImage;
+bool g_playerHpIconHasAlpha = false;
+IMAGE g_playerArmorIconImage;
+bool g_playerArmorIconHasAlpha = false;
+IMAGE g_playerEnergyIconImage;
+bool g_playerEnergyIconHasAlpha = false;
+IMAGE g_ultimateCooldownIconImages[kCharacterCount];
+bool g_ultimateCooldownIconHasAlpha[kCharacterCount] = { false, false, false };
+IMAGE g_ultimateCooldownGrayIconImages[kCharacterCount];
+bool g_ultimateCooldownGrayIconHasAlpha[kCharacterCount] = { false, false, false };
+IMAGE g_energyDropImage;
+bool g_energyDropHasAlpha = false;
+IMAGE g_recoverPotionDropImage;
+bool g_recoverPotionDropHasAlpha = false;
+IMAGE g_energyPotionDropImage;
+bool g_energyPotionDropHasAlpha = false;
+IMAGE g_lifePotionDropImage;
+bool g_lifePotionDropHasAlpha = false;
+std::vector<Projectile> g_playerProjectiles;
+size_t g_playerProjectileOverflowCursor = 0;
+std::vector<DashAfterimage> g_playerDashAfterimages;
+AnimatedGif g_apolloSlashGif;
+ApolloSlashState g_apolloSlashState;
+ULONGLONG g_apolloSlashNextAvailableTick = 0;
+IMAGE g_sunUltimateSwordQiImage;
+bool g_sunUltimateSwordQiHasAlpha = false;
+IMAGE g_sunCriticalHaloImage;
+bool g_sunCriticalHaloHasAlpha = false;
+std::vector<SunSwordQiState> g_sunSwordQiProjectiles;
+int g_sunCriticalHitCount = 0;
+IMAGE g_moonRainArrowImage;
+bool g_moonRainArrowHasAlpha = false;
+IMAGE g_moonRainAimCircleImage;
+bool g_moonRainAimCircleHasAlpha = false;
+IMAGE g_moonUltimateFireballImage;
+bool g_moonUltimateFireballHasAlpha = false;
+IMAGE g_moonUltimateFireballAuraImage;
+bool g_moonUltimateFireballAuraHasAlpha = false;
+IMAGE g_moonUltimateWaveImage;
+bool g_moonUltimateWaveHasAlpha = false;
+IMAGE g_moonMagicCageImage;
+bool g_moonMagicCageHasAlpha = false;
+IMAGE g_sunUltimateShieldImage;
+bool g_sunUltimateShieldHasAlpha = false;
+IMAGE g_loveUltimateRecoverCircleImage;
+bool g_loveUltimateRecoverCircleHasAlpha = false;
+IMAGE g_loveUltimateBulletImage;
+bool g_loveUltimateBulletHasAlpha = false;
+IMAGE g_lovePurifyCircleImage;
+bool g_lovePurifyCircleHasAlpha = false;
+MoonRainChargeState g_moonRainChargeState;
+MoonRainCastState g_moonRainCastState;
+MoonUltimateState g_moonUltimateState;
+std::vector<MoonUltimateFireballState> g_moonUltimateFireballs;
+ULONGLONG g_moonUltimateFireballNextCastTick = 0;
+SunUltimateState g_sunUltimateState;
+LoveUltimateState g_loveUltimateState;
+LovePurifyState g_lovePurifyState;
+std::vector<EnergyDrop> g_energyDrops;
+size_t g_energyDropOverflowCursor = 0;
+std::vector<ShockwaveInstance> g_enemyShockwaves;
+std::vector<EnemySpikeRow> g_enemySpikeRows;
+
+EnemyInstance g_enemy;
+GameData::EnemyKind g_enemyKind = GameData::EnemyKind::SnowApe;
+GameData::EnemyCombatParams g_enemyParams = {};
+AnimatedGif g_enemyIdleGif;
+AnimatedGif g_enemyWalkGif;
+AnimatedGif g_enemyBreakGif;
+AnimatedGif g_enemySpecialAttackGif;
+AnimatedGif g_enemyJumpGif;
+IMAGE g_enemyDeathImage;
+bool g_enemyDeathHasAlpha = false;
+IMAGE g_enemyBulletImage;
+bool g_enemyBulletHasAlpha = false;
+IMAGE g_enemyIceSpikeImage;
+bool g_enemyIceSpikeHasAlpha = false;
+std::vector<Projectile> g_enemyProjectiles;
+size_t g_enemyProjectileOverflowCursor = 0;
+int g_enemyAnimReferenceWidth = 0;
+int g_enemyAnimReferenceHeight = 0;
+bool g_enemySawPlayerLastFrame = false;
+BattlePhase g_battlePhase = BattlePhase::NormalFight;
+std::vector<IcefieldEnemy> g_icefieldEnemies;
+int g_activeIcefieldEnemyIndex = -1;
+
+RECT g_iceRegionRect;
+
+}  

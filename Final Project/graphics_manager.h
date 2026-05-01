@@ -3,9 +3,9 @@
 
 class GraphicsManager {
 public:
-    static void initialize();//创建游戏窗口
-    static void cleanup();//关闭图形窗口释放资源
-    static void clearScreen();//清空屏幕内容
+    static void initialize();
+    static void cleanup();
+    static void clearScreen();
 };
 
 #endif
