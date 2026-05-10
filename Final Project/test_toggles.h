@@ -5,7 +5,7 @@ namespace TestToggles {
 
 struct RuntimeFlags {
     bool infinitePlayerEnergy = false;
-    bool startNormalBattleWithSixEnemies = true;
+    bool startNormalBattleWithSixEnemies = false;
     bool showAuxiliaryHudText = false;
 };
 

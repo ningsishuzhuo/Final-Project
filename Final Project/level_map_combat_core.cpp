@@ -1,12 +1,22 @@
 #include "level_map_internal.h"
 #include "level_map_combat_helpers_internal.h"
 #include "level_map_combat_internal.h"
-#include "level_map_damage_rules.h"
 
 #include <cmath>
 #include <cstdlib>
 
 namespace LevelMapInternal {
+namespace {
+
+bool UsesHeavyProjectileDamage(GameData::EnemyTier tier) {
+    return tier == GameData::EnemyTier::Boss || tier == GameData::EnemyTier::Elite;
+}
+
+}
+
+int GetEnemyProjectileDamageByTier(GameData::EnemyTier tier) {
+    return UsesHeavyProjectileDamage(tier) ? kEliteEnemyHitDamage : kNormalEnemyHitDamage;
+}
 
 void NormalizeAimDirection(float& dirX, float& dirY) {
     const float length = std::sqrt(dirX * dirX + dirY * dirY);
@@ -75,6 +85,7 @@ int ApplySunCriticalPassiveToDamage(int damage) {
         return damage;
     }
 
+    // 日角色被动按命中次数触发暴击。
     if (g_sunCriticalHitCount >= kSunCriticalReadyHitCount) {
         g_sunCriticalHitCount = 0;
         g_playerEnergy -= static_cast<float>(kSunCriticalEnergyCost);
@@ -146,6 +157,6 @@ void ApplyDamageToCurrentEnemy(int damage, bool allowSunCriticalPassive) {
     }
 }
 
-}  
+}
 
 

@@ -123,7 +123,7 @@ int GetPlayerDeathTargetSize(int characterIndex) {
 }
 
 bool DrawPlayerDeathImage(int characterIndex) {
-    if (!RenderUtils::HasImage(g_playerDeathImages[characterIndex])) {
+    if (!RenderUtils::HasImage(g_playerDeathAssets[characterIndex].image)) {
         return false;
     }
 
@@ -132,8 +132,8 @@ bool DrawPlayerDeathImage(int characterIndex) {
     int srcW = 0;
     int srcH = 0;
     if (!FindImageVisibleBounds(
-        g_playerDeathImages[characterIndex],
-        g_playerDeathHasAlpha[characterIndex],
+        g_playerDeathAssets[characterIndex].image,
+        g_playerDeathAssets[characterIndex].hasAlpha,
         srcX,
         srcY,
         srcW,
@@ -154,8 +154,8 @@ bool DrawPlayerDeathImage(int characterIndex) {
     const int drawX = g_playerX - g_cameraX - drawW / 2;
     const int drawY = g_playerY - g_cameraY - drawH / 2;
     DrawImageAutoRegion(
-        g_playerDeathImages[characterIndex],
-        g_playerDeathHasAlpha[characterIndex],
+        g_playerDeathAssets[characterIndex].image,
+        g_playerDeathAssets[characterIndex].hasAlpha,
         srcX,
         srcY,
         srcW,
@@ -244,12 +244,12 @@ void DrawPlayer() {
 
     if (characterIndex == AssetPaths::CHARACTER_LOVE &&
         g_lovePurifyState.active &&
-        RenderUtils::HasImage(g_lovePurifyCircleImage)) {
+        RenderUtils::HasImage(g_lovePurifyCircleAsset.image)) {
         const int purifyX = g_playerX - g_cameraX - kLovePurifyCircleDrawW / 2;
         const int purifyY = g_playerY + kPlayerFootOffsetY - g_cameraY - kLovePurifyCircleDrawH / 2;
         RenderUtils::DrawImageAuto(
-            g_lovePurifyCircleImage,
-            g_lovePurifyCircleHasAlpha,
+            g_lovePurifyCircleAsset.image,
+            g_lovePurifyCircleAsset.hasAlpha,
             purifyX,
             purifyY,
             kLovePurifyCircleDrawW,
@@ -258,12 +258,12 @@ void DrawPlayer() {
 
     if (characterIndex == AssetPaths::CHARACTER_MOON &&
         g_moonUltimateState.active &&
-        RenderUtils::HasImage(g_moonUltimateWaveImage)) {
+        RenderUtils::HasImage(g_moonUltimateWaveAsset.image)) {
         const int waveX = g_playerX - g_cameraX - kMoonUltimateMarkDrawW / 2;
         const int waveY = g_playerY - g_cameraY - kMoonUltimateMarkDrawH / 2 + kMoonUltimateMarkOffsetY;
         RenderUtils::DrawImageAuto(
-            g_moonUltimateWaveImage,
-            g_moonUltimateWaveHasAlpha,
+            g_moonUltimateWaveAsset.image,
+            g_moonUltimateWaveAsset.hasAlpha,
             waveX,
             waveY,
             kMoonUltimateMarkDrawW,
@@ -271,12 +271,12 @@ void DrawPlayer() {
     }
     else if (characterIndex == AssetPaths::CHARACTER_SUN &&
         g_sunUltimateState.active &&
-        RenderUtils::HasImage(g_sunUltimateShieldImage)) {
+        RenderUtils::HasImage(g_sunUltimateShieldAsset.image)) {
         const int shieldX = g_playerX - g_cameraX - kSunUltimateMarkDrawW / 2;
         const int shieldY = g_playerY - g_cameraY - kSunUltimateMarkDrawH / 2 + kSunUltimateMarkOffsetY;
         RenderUtils::DrawImageAuto(
-            g_sunUltimateShieldImage,
-            g_sunUltimateShieldHasAlpha,
+            g_sunUltimateShieldAsset.image,
+            g_sunUltimateShieldAsset.hasAlpha,
             shieldX,
             shieldY,
             kSunUltimateMarkDrawW,
@@ -284,12 +284,12 @@ void DrawPlayer() {
     }
     else if (characterIndex == AssetPaths::CHARACTER_LOVE &&
         g_loveUltimateState.active &&
-        RenderUtils::HasImage(g_loveUltimateRecoverCircleImage)) {
+        RenderUtils::HasImage(g_loveUltimateRecoverCircleAsset.image)) {
         const int circleX = g_playerX - g_cameraX - kLoveUltimateMarkDrawW / 2;
         const int circleY = g_playerY - g_cameraY - kLoveUltimateMarkDrawH / 2 + kLoveUltimateMarkOffsetY;
         RenderUtils::DrawImageAuto(
-            g_loveUltimateRecoverCircleImage,
-            g_loveUltimateRecoverCircleHasAlpha,
+            g_loveUltimateRecoverCircleAsset.image,
+            g_loveUltimateRecoverCircleAsset.hasAlpha,
             circleX,
             circleY,
             kLoveUltimateMarkDrawW,
@@ -303,12 +303,12 @@ void DrawPlayer() {
     RenderUtils::DrawAnimatedGif(playerGif, playerScreenX, playerScreenY, kPlayerDrawW, kPlayerDrawH, !g_faceRight);
     if (characterIndex == AssetPaths::CHARACTER_SUN &&
         g_sunCriticalHitCount >= kSunCriticalReadyHitCount &&
-        RenderUtils::HasImage(g_sunCriticalHaloImage)) {
+        RenderUtils::HasImage(g_sunCriticalHaloAsset.image)) {
         const int haloX = playerScreenX + kPlayerDrawW / 2 - kSunCriticalHaloDrawSize / 2;
         const int haloY = playerScreenY - kSunCriticalHaloDrawSize + 10;
         RenderUtils::DrawImageAuto(
-            g_sunCriticalHaloImage,
-            g_sunCriticalHaloHasAlpha,
+            g_sunCriticalHaloAsset.image,
+            g_sunCriticalHaloAsset.hasAlpha,
             haloX,
             haloY,
             kSunCriticalHaloDrawSize,

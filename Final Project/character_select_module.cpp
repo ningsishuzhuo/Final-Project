@@ -4,6 +4,7 @@
 #include <tchar.h>
 #include "asset_paths.h"
 #include "game_data.h"
+#include "menu_render_utils.h"
 #include "render_utils.h"
 #ifndef WINVER
 #define WINVER 0x0600
@@ -20,8 +21,6 @@ namespace {
 constexpr int kCharacterCount = AssetPaths::CHARACTER_COUNT;
 constexpr int kCharacterActionCount = 3;
 
-constexpr const TCHAR* kTypeFontFace = _T("Type");
-
 constexpr const TCHAR* kCharacterActionLabels[kCharacterActionCount] = {
     _T("上一角色"),
     _T("下一角色"),
@@ -30,10 +29,13 @@ constexpr const TCHAR* kCharacterActionLabels[kCharacterActionCount] = {
 
 using RenderUtils::AnimatedGif;
 
-IMAGE g_characterPortraits[kCharacterCount];
-IMAGE g_characterMoons[kCharacterCount];
-bool g_characterPortraitHasAlpha[kCharacterCount] = { false, false, false };
-bool g_characterMoonHasAlpha[kCharacterCount] = { false, false, false };
+struct ImageAsset {
+    IMAGE image;
+    bool hasAlpha = false;
+};
+
+ImageAsset g_characterPortraits[kCharacterCount];
+ImageAsset g_characterMoons[kCharacterCount];
 AnimatedGif g_characterGifs[kCharacterCount];
 IMAGE g_cachedBackground;
 bool g_backgroundCacheBuilt = false;
@@ -42,7 +44,6 @@ RECT g_characterActionRects[kCharacterActionCount];
 bool g_characterActionHovered[kCharacterActionCount] = { false, false, false };
 
 int g_selectedCharacterIndex = 0;
-bool g_typeFontLoaded = false;
 
 constexpr int kContentPadding = 24;
 constexpr int kPortraitX = 40;
@@ -89,46 +90,18 @@ constexpr int kConfirmButtonW = 188;
 constexpr int kConfirmButtonH = 48;
 constexpr int kButtonsRowY = 480;
 
-bool IsPointInRect(int x, int y, const RECT& rect) {
-    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-}
-
-const TCHAR* GetTypeFontFace() {
-    return g_typeFontLoaded ? kTypeFontFace : _T("黑体");
-}
-
-void EnsureTypeFontLoaded() {
-    if (g_typeFontLoaded) {
-        return;
-    }
-
-    const int added = AddFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
-    if (added > 0) {
-        g_typeFontLoaded = true;
-    }
-}
-
-void UnloadTypeFont() {
-    if (!g_typeFontLoaded) {
-        return;
-    }
-
-    RemoveFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
-    g_typeFontLoaded = false;
-}
-
 void DrawTypeLabel(const TCHAR* text, const RECT& rect, int fontSize, COLORREF mainColor, COLORREF shadowColor) {
-    setbkmode(TRANSPARENT);
-    settextstyle(fontSize, 0, GetTypeFontFace());
+    MenuRenderUtils::DrawShadowedText(text, rect, fontSize, mainColor, shadowColor, 2);
+}
 
-    RECT shadowRect = rect;
-    OffsetRect(&shadowRect, 2, 2);
-    settextcolor(shadowColor);
-    drawtext(text, &shadowRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+void LoadImageAsset(ImageAsset& asset, const TCHAR* path, int width = 0, int height = 0) {
+    RenderUtils::LoadImageFlexible(asset.image, path, width, height);
+    asset.hasAlpha = RenderUtils::HasImage(asset.image) && RenderUtils::HasMeaningfulAlpha(asset.image);
+}
 
-    RECT textRect = rect;
-    settextcolor(mainColor);
-    drawtext(text, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+void ResetImageAsset(ImageAsset& asset) {
+    asset.image.Resize(0, 0);
+    asset.hasAlpha = false;
 }
 
 void DrawIconShadow(int x, int y, int w, int h) {
@@ -187,25 +160,13 @@ void DrawCharacterSelectBackground() {
 }
 
 void DrawCharacterSelectButtons() {
-    setbkmode(TRANSPARENT);
-    settextstyle(28, 0, GetTypeFontFace());
-
     for (int i = 0; i < kCharacterActionCount; ++i) {
         const RECT& rect = g_characterActionRects[i];
         const bool hovered = g_characterActionHovered[i];
-
         const COLORREF mainColor = hovered ? RGB(255, 255, 255) : RGB(208, 222, 244);
         const COLORREF shadowColor = hovered ? RGB(98, 128, 182) : RGB(36, 54, 90);
 
-
-        RECT shadowRect = rect;
-        OffsetRect(&shadowRect, 1, 1);
-        settextcolor(shadowColor);
-        drawtext(kCharacterActionLabels[i], &shadowRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-        RECT textRect = rect;
-        settextcolor(mainColor);
-        drawtext(kCharacterActionLabels[i], &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        MenuRenderUtils::DrawShadowedText(kCharacterActionLabels[i], rect, 28, mainColor, shadowColor);
     }
 }
 
@@ -229,13 +190,19 @@ void DrawCharacterProfile(int index) {
         return;
     }
 
-    if (!RenderUtils::HasImage(g_characterPortraits[index])) {
+    if (!RenderUtils::HasImage(g_characterPortraits[index].image)) {
         DrawCharacterPlaceholder(index);
         return;
     }
 
     const GameData::CharacterDefinition& character = GameData::GetCharacterDefinition(index);
-    RenderUtils::DrawImageAuto(g_characterPortraits[index], g_characterPortraitHasAlpha[index], kPortraitX, kPortraitY, kPortraitW, kPortraitH);
+    RenderUtils::DrawImageAuto(
+        g_characterPortraits[index].image,
+        g_characterPortraits[index].hasAlpha,
+        kPortraitX,
+        kPortraitY,
+        kPortraitW,
+        kPortraitH);
 
     RECT nameTitleRect = { kNameX, kNameY, kNameX + kNameW, kNameY + 104 };
     RECT nameSubRect = { kNameX, kNameY + 98, kNameX + kNameW, kNameY + kNameH };
@@ -246,9 +213,15 @@ void DrawCharacterProfile(int index) {
     RECT personRect = { kPersonX, kPersonY, kPersonX + kPersonW, kPersonY + kPersonH };
     DrawTypeLabel(character.weaponLabel, weaponRect, 38, RGB(236, 244, 255), RGB(34, 52, 84));
     DrawTypeLabel(character.personLabel, personRect, 38, RGB(236, 244, 255), RGB(34, 52, 84));
-    if (RenderUtils::HasImage(g_characterMoons[index])) {
+    if (RenderUtils::HasImage(g_characterMoons[index].image)) {
         DrawIconShadow(kMoonX, kMoonY, kMoonW, kMoonH);
-        RenderUtils::DrawImageAuto(g_characterMoons[index], g_characterMoonHasAlpha[index], kMoonX, kMoonY, kMoonW, kMoonH);
+        RenderUtils::DrawImageAuto(
+            g_characterMoons[index].image,
+            g_characterMoons[index].hasAlpha,
+            kMoonX,
+            kMoonY,
+            kMoonW,
+            kMoonH);
     }
 
     RenderUtils::UpdateAnimatedGifFrame(g_characterGifs[index]);
@@ -258,23 +231,17 @@ void DrawCharacterProfile(int index) {
 
 void LoadAssets() {
     for (int i = 0; i < kCharacterCount; ++i) {
-        RenderUtils::LoadImageFlexible(g_characterPortraits[i], AssetPaths::GetCharacterPortraitPath(i), 0, 0);
-        g_characterPortraitHasAlpha[i] = RenderUtils::HasImage(g_characterPortraits[i]) && RenderUtils::HasMeaningfulAlpha(g_characterPortraits[i]);
-
-        RenderUtils::LoadImageFlexible(g_characterMoons[i], AssetPaths::GetCharacterMoonPath(i), kMoonW, kMoonH);
-        g_characterMoonHasAlpha[i] = RenderUtils::HasImage(g_characterMoons[i]) && RenderUtils::HasMeaningfulAlpha(g_characterMoons[i]);
-
+        LoadImageAsset(g_characterPortraits[i], AssetPaths::GetCharacterPortraitPath(i));
+        LoadImageAsset(g_characterMoons[i], AssetPaths::GetCharacterMoonPath(i), kMoonW, kMoonH);
         RenderUtils::LoadAnimatedGif(g_characterGifs[i], AssetPaths::GetCharacterSelectGifPath(i));
     }
 }
 
 void FreeAssets() {
     for (int i = 0; i < kCharacterCount; ++i) {
-        g_characterPortraits[i].Resize(0, 0);
-        g_characterMoons[i].Resize(0, 0);
+        ResetImageAsset(g_characterPortraits[i]);
+        ResetImageAsset(g_characterMoons[i]);
         g_characterGifs[i].Reset();
-        g_characterPortraitHasAlpha[i] = false;
-        g_characterMoonHasAlpha[i] = false;
     }
 
     g_cachedBackground.Resize(0, 0);
@@ -291,34 +258,34 @@ void UpdateActionHoverState(int x, int y) {
         hoverRect.top -= kHoverPadding;
         hoverRect.bottom += kHoverPadding;
 
-        g_characterActionHovered[i] = IsPointInRect(x, y, hoverRect);
+        g_characterActionHovered[i] = RenderUtils::IsPointInRect(x, y, hoverRect);
     }
 }
 
 bool HandleActionClick(int x, int y) {
-    if (IsPointInRect(x, y, g_characterActionRects[0])) {
+    if (RenderUtils::IsPointInRect(x, y, g_characterActionRects[0])) {
         g_selectedCharacterIndex = (g_selectedCharacterIndex - 1 + kCharacterCount) % kCharacterCount;
         return false;
     }
-    if (IsPointInRect(x, y, g_characterActionRects[1])) {
+    if (RenderUtils::IsPointInRect(x, y, g_characterActionRects[1])) {
         g_selectedCharacterIndex = (g_selectedCharacterIndex + 1) % kCharacterCount;
         return false;
     }
-    return IsPointInRect(x, y, g_characterActionRects[2]);
+    return RenderUtils::IsPointInRect(x, y, g_characterActionRects[2]);
 }
 }
 
 namespace CharacterSelectModule {
 void Initialize() {
     RenderUtils::AcquireGdiplus();
-    EnsureTypeFontLoaded();
+    MenuRenderUtils::AcquireMenuFont();
     LoadAssets();
     InitializeCharacterActionButtons();
 }
 
 void Shutdown() {
     FreeAssets();
-    UnloadTypeFont();
+    MenuRenderUtils::ReleaseMenuFont();
     RenderUtils::ReleaseGdiplus();
 }
 

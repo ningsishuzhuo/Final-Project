@@ -3,7 +3,6 @@
 
 #include "level_map_types.h"
 
-#include <cstddef>
 #include <vector>
 
 namespace LevelMapInternal {
@@ -12,11 +11,8 @@ void ClampPlayerHp();
 void ClampPlayerEnergy();
 void ClampPlayerArmor();
 void CompactProjectileArray(std::vector<Projectile>& arr);
-void PushProjectileCapped(
-    std::vector<Projectile>& projectiles,
-    const Projectile& projectile,
-    size_t cap,
-    size_t& overflowCursor);
+void PushPlayerProjectileCapped(const Projectile& projectile);
+void PushEnemyProjectileCapped(const Projectile& projectile);
 
 }  
 

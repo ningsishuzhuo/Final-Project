@@ -8,8 +8,6 @@
 namespace LevelMapInternal {
 namespace {
 
-constexpr float kPi = 3.14159265358979323846f;
-
 int RollApolloSlashDamage() {
     const bool critical =
         (std::rand() % 100) < kApolloSlashCritChancePercent;
@@ -114,6 +112,20 @@ bool IsSunUltimateCurrentlyActive(ULONGLONG now) {
         now < g_sunUltimateState.endTick;
 }
 
+void PushSunSwordQi(const SunSwordQiState& swordQi) {
+    static_assert(kSunUltimateSwordQiMaxCount > 0, "invalid capacity");
+
+    if (g_sunSwordQiProjectiles.size() < static_cast<size_t>(kSunUltimateSwordQiMaxCount)) {
+        g_sunSwordQiProjectiles.push_back(swordQi);
+        return;
+    }
+
+    for (size_t i = 1; i < g_sunSwordQiProjectiles.size(); ++i) {
+        g_sunSwordQiProjectiles[i - 1] = g_sunSwordQiProjectiles[i];
+    }
+    g_sunSwordQiProjectiles.back() = swordQi;
+}
+
 void SpawnSunSwordQiProjectile(float dirX, float dirY) {
     SunSwordQiState swordQi;
     swordQi.active = true;
@@ -124,10 +136,10 @@ void SpawnSunSwordQiProjectile(float dirX, float dirY) {
     swordQi.angleDegrees =
         static_cast<float>(std::atan2(swordQi.vy, swordQi.vx) * 180.0 / static_cast<double>(kPi));
     swordQi.baseDamage = kSunUltimateSwordQiDamage;
-    PushCapped(g_sunSwordQiProjectiles, swordQi, kSunUltimateSwordQiMaxCount);
+    PushSunSwordQi(swordQi);
 }
 
-}  
+}
 
 void SpawnApolloSlashAttack(int clickScreenX, int clickScreenY) {
     const ULONGLONG now = RenderUtils::NowTickMs();
@@ -213,4 +225,4 @@ void SpawnApolloSlashAttack(int clickScreenX, int clickScreenY) {
     ExecuteApolloSlashAgainstCurrentEnemy(dirX, dirY);
 }
 
-}  
+}

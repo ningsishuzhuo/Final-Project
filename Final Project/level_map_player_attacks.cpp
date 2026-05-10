@@ -7,15 +7,13 @@
 namespace LevelMapInternal {
 namespace {
 
-constexpr float kPi = 3.14159265358979323846f;
-
 bool IsLoveUltimateCurrentlyActive(ULONGLONG now) {
     return g_currentCharacterIndex == AssetPaths::CHARACTER_LOVE &&
         g_loveUltimateState.active &&
         now < g_loveUltimateState.endTick;
 }
 
-}  
+}
 
 void SpawnPlayerProjectile(int clickScreenX, int clickScreenY) {
     const ULONGLONG now = RenderUtils::NowTickMs();
@@ -32,8 +30,8 @@ void SpawnPlayerProjectile(int clickScreenX, int clickScreenY) {
     const int energyCost = kPlayerBulletEnergyCost *
         (loveUltimateActive ? kLoveUltimateEnergyCostMultiplier : 1);
     const bool hasRequiredImage = loveUltimateActive
-        ? RenderUtils::HasImage(g_loveUltimateBulletImage)
-        : RenderUtils::HasImage(g_particleImage);
+        ? RenderUtils::HasImage(g_loveUltimateBulletAsset.image)
+        : RenderUtils::HasImage(g_particleAsset.image);
     if (g_playerEnergy < static_cast<float>(energyCost) || !hasRequiredImage) {
         return;
     }
@@ -64,15 +62,11 @@ void SpawnPlayerProjectile(int clickScreenX, int clickScreenY) {
         projectile.loveUltimateBullet = loveUltimateActive;
         projectile.active = true;
 
-        PushProjectileCapped(
-            g_playerProjectiles,
-            projectile,
-            static_cast<size_t>(kPlayerProjectileMaxCount),
-            g_playerProjectileOverflowCursor);
+        PushPlayerProjectileCapped(projectile);
     }
 
     g_playerEnergy -= static_cast<float>(energyCost);
     ClampPlayerEnergy();
 }
 
-}  
+}

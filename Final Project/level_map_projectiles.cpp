@@ -1,7 +1,6 @@
 #include "level_map_internal.h"
 #include "level_map_combat_helpers_internal.h"
 #include "level_map_combat_internal.h"
-#include "level_map_damage_rules.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -9,7 +8,28 @@
 namespace LevelMapInternal {
 namespace {
 
-constexpr float kPi = 3.14159265358979323846f;
+struct FloatBounds {
+    float left = 0.0f;
+    float top = 0.0f;
+    float right = 0.0f;
+    float bottom = 0.0f;
+};
+
+FloatBounds GetIceRegionBounds() {
+    return FloatBounds{
+        static_cast<float>(g_iceRegionRect.left),
+        static_cast<float>(g_iceRegionRect.top),
+        static_cast<float>(g_iceRegionRect.right),
+        static_cast<float>(g_iceRegionRect.bottom)
+    };
+}
+
+bool IsOutsideBounds(float x, float y, const FloatBounds& bounds) {
+    return x < bounds.left ||
+        y < bounds.top ||
+        x > bounds.right ||
+        y > bounds.bottom;
+}
 
 int CountActiveProjectiles(const std::vector<Projectile>& projectiles) {
     int count = 0;
@@ -21,7 +41,65 @@ int CountActiveProjectiles(const std::vector<Projectile>& projectiles) {
     return count;
 }
 
-}  
+int CountActiveSunSwordQi() {
+    int count = 0;
+    for (const SunSwordQiState& swordQi : g_sunSwordQiProjectiles) {
+        if (swordQi.active) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+void CompactSunSwordQiProjectiles() {
+    size_t writeIndex = 0;
+    for (size_t i = 0; i < g_sunSwordQiProjectiles.size(); ++i) {
+        if (!g_sunSwordQiProjectiles[i].active) {
+            continue;
+        }
+        if (writeIndex != i) {
+            g_sunSwordQiProjectiles[writeIndex] = g_sunSwordQiProjectiles[i];
+        }
+        ++writeIndex;
+    }
+    g_sunSwordQiProjectiles.resize(writeIndex);
+}
+
+bool IsSunSwordQiOutsideWorld(const SunSwordQiState& swordQi, const FloatBounds& iceBounds) {
+    return IsOutsideBounds(swordQi.x, swordQi.y, iceBounds) ||
+        swordQi.x < -kSunUltimateSwordQiDrawW ||
+        swordQi.y < -kSunUltimateSwordQiDrawH ||
+        swordQi.x > kLevelMapWidth + kSunUltimateSwordQiDrawW ||
+        swordQi.y > kLevelMapHeight + kSunUltimateSwordQiDrawH;
+}
+
+bool IsProjectileOutsideWorld(
+    const Projectile& projectile,
+    const FloatBounds& iceBounds,
+    int speedGuardWidth,
+    int speedGuardHeight) {
+    return IsOutsideBounds(projectile.x, projectile.y, iceBounds) ||
+        projectile.x < -speedGuardWidth ||
+        projectile.y < -speedGuardHeight ||
+        projectile.x > kLevelMapWidth + speedGuardWidth ||
+        projectile.y > kLevelMapHeight + speedGuardHeight;
+}
+
+void PushEnemyShockwave(const ShockwaveInstance& wave) {
+    static_assert(kEnemyShockwaveMaxCount > 0, "invalid capacity");
+
+    if (g_enemyShockwaves.size() < static_cast<size_t>(kEnemyShockwaveMaxCount)) {
+        g_enemyShockwaves.push_back(wave);
+        return;
+    }
+
+    for (size_t i = 1; i < g_enemyShockwaves.size(); ++i) {
+        g_enemyShockwaves[i - 1] = g_enemyShockwaves[i];
+    }
+    g_enemyShockwaves.back() = wave;
+}
+
+}
 
 void ApplyPlayerHit(int damage) {
     if (g_playerIsDead || g_playerHp <= 0 || damage <= 0) {
@@ -98,11 +176,7 @@ void SpawnEnemyProjectileFrom(
     projectile.hitArmedTick = nowTick + hitDelayMs;
     projectile.active = true;
 
-    PushProjectileCapped(
-        g_enemyProjectiles,
-        projectile,
-        static_cast<size_t>(kEnemyBulletMaxCount),
-        g_enemyProjectileOverflowCursor);
+    PushEnemyProjectileCapped(projectile);
 }
 
 void SpawnEnemyShockwave(float centerX, float centerY, bool alreadyHitPlayer, ShockwaveInstance::Variant variant) {
@@ -119,14 +193,11 @@ void SpawnEnemyShockwave(float centerX, float centerY, bool alreadyHitPlayer, Sh
     wave.hitPlayer = alreadyHitPlayer;
     wave.variant = variant;
 
-    PushCapped(g_enemyShockwaves, wave, kEnemyShockwaveMaxCount);
+    PushEnemyShockwave(wave);
 }
 
 void UpdateSunSwordQiProjectiles() {
-    const float minX = static_cast<float>(g_iceRegionRect.left);
-    const float maxX = static_cast<float>(g_iceRegionRect.right);
-    const float minY = static_cast<float>(g_iceRegionRect.top);
-    const float maxY = static_cast<float>(g_iceRegionRect.bottom);
+    const FloatBounds iceBounds = GetIceRegionBounds();
 
     size_t writeIndex = 0;
     for (size_t i = 0; i < g_sunSwordQiProjectiles.size(); ++i) {
@@ -137,16 +208,7 @@ void UpdateSunSwordQiProjectiles() {
 
         swordQi.x += swordQi.vx;
         swordQi.y += swordQi.vy;
-        const bool outOfBounds =
-            swordQi.x < minX ||
-            swordQi.y < minY ||
-            swordQi.x > maxX ||
-            swordQi.y > maxY ||
-            swordQi.x < -kSunUltimateSwordQiDrawW ||
-            swordQi.y < -kSunUltimateSwordQiDrawH ||
-            swordQi.x > kLevelMapWidth + kSunUltimateSwordQiDrawW ||
-            swordQi.y > kLevelMapHeight + kSunUltimateSwordQiDrawH;
-        if (outOfBounds) {
+        if (IsSunSwordQiOutsideWorld(swordQi, iceBounds)) {
             continue;
         }
 
@@ -157,10 +219,7 @@ void UpdateSunSwordQiProjectiles() {
 }
 
 void UpdateProjectileArray(std::vector<Projectile>& arr, int speedGuardWidth, int speedGuardHeight) {
-    const float minX = static_cast<float>(g_iceRegionRect.left);
-    const float maxX = static_cast<float>(g_iceRegionRect.right);
-    const float minY = static_cast<float>(g_iceRegionRect.top);
-    const float maxY = static_cast<float>(g_iceRegionRect.bottom);
+    const FloatBounds iceBounds = GetIceRegionBounds();
     bool hasInactive = false;
     for (Projectile& projectile : arr) {
         if (!projectile.active) {
@@ -175,18 +234,7 @@ void UpdateProjectileArray(std::vector<Projectile>& arr, int speedGuardWidth, in
             continue;
         }
 
-        const bool hitIceWall =
-            projectile.x < minX ||
-            projectile.y < minY ||
-            projectile.x > maxX ||
-            projectile.y > maxY;
-        const bool outOfMapSafety =
-            projectile.x < -speedGuardWidth ||
-            projectile.y < -speedGuardHeight ||
-            projectile.x > kLevelMapWidth + speedGuardWidth ||
-            projectile.y > kLevelMapHeight + speedGuardHeight;
-
-        if (hitIceWall || outOfMapSafety) {
+        if (IsProjectileOutsideWorld(projectile, iceBounds, speedGuardWidth, speedGuardHeight)) {
             projectile.active = false;
             hasInactive = true;
         }
@@ -199,12 +247,7 @@ void UpdateProjectileArray(std::vector<Projectile>& arr, int speedGuardWidth, in
 
 void HandleCombatCollisions(ULONGLONG now) {
     int activePlayerProjectileCount = CountActiveProjectiles(g_playerProjectiles);
-    int activeSunSwordQiCount = 0;
-    for (const SunSwordQiState& swordQi : g_sunSwordQiProjectiles) {
-        if (swordQi.active) {
-            ++activeSunSwordQiCount;
-        }
-    }
+    int activeSunSwordQiCount = CountActiveSunSwordQi();
 
     auto resolvePlayerProjectilesAgainstCurrentEnemy = [&]() {
         if (activePlayerProjectileCount <= 0) {
@@ -274,31 +317,30 @@ void HandleCombatCollisions(ULONGLONG now) {
         const int primaryActiveIndex = g_activeIcefieldEnemyIndex;
         const bool bossFightActive = !IsIcefieldNormalBattleActive() && primaryEnemyState.alive;
 
-        
-        
-        if (bossFightActive && activePlayerProjectileCount > 0) {
+        auto runAgainstPrimaryEnemy = [&](bool useSunSwordQi) {
             g_enemy = primaryEnemyState;
             g_enemyKind = primaryEnemyKind;
             SetEnemyTier(GameData::GetEnemyDefinition(primaryEnemyKind).tier);
             g_enemySawPlayerLastFrame = primarySawPlayer;
             g_activeIcefieldEnemyIndex = primaryActiveIndex;
-            resolvePlayerProjectilesAgainstCurrentEnemy();
+
+            if (useSunSwordQi) {
+                resolveSunSwordQiAgainstCurrentEnemy();
+            }
+            else {
+                resolvePlayerProjectilesAgainstCurrentEnemy();
+            }
 
             primaryEnemyState = g_enemy;
             primaryEnemyParams = g_enemyParams;
             primarySawPlayer = g_enemySawPlayerLastFrame;
+        };
+
+        if (bossFightActive && activePlayerProjectileCount > 0) {
+            runAgainstPrimaryEnemy(false);
         }
         if (bossFightActive && activeSunSwordQiCount > 0) {
-            g_enemy = primaryEnemyState;
-            g_enemyKind = primaryEnemyKind;
-            SetEnemyTier(GameData::GetEnemyDefinition(primaryEnemyKind).tier);
-            g_enemySawPlayerLastFrame = primarySawPlayer;
-            g_activeIcefieldEnemyIndex = primaryActiveIndex;
-            resolveSunSwordQiAgainstCurrentEnemy();
-
-            primaryEnemyState = g_enemy;
-            primaryEnemyParams = g_enemyParams;
-            primarySawPlayer = g_enemySawPlayerLastFrame;
+            runAgainstPrimaryEnemy(true);
         }
 
         for (size_t i = 0; i < g_icefieldEnemies.size() &&
@@ -343,17 +385,7 @@ void HandleCombatCollisions(ULONGLONG now) {
     }
 
     if (activeSunSwordQiCount < static_cast<int>(g_sunSwordQiProjectiles.size())) {
-        size_t writeIndex = 0;
-        for (size_t i = 0; i < g_sunSwordQiProjectiles.size(); ++i) {
-            if (!g_sunSwordQiProjectiles[i].active) {
-                continue;
-            }
-            if (writeIndex != i) {
-                g_sunSwordQiProjectiles[writeIndex] = g_sunSwordQiProjectiles[i];
-            }
-            ++writeIndex;
-        }
-        g_sunSwordQiProjectiles.resize(writeIndex);
+        CompactSunSwordQiProjectiles();
     }
 
     for (Projectile& projectile : g_enemyProjectiles) {
@@ -377,5 +409,5 @@ void HandleCombatCollisions(ULONGLONG now) {
     }
 }
 
-}  
+}
 

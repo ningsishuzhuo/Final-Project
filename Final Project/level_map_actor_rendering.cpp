@@ -168,7 +168,7 @@ void DrawEnemyHeadLabel(
 
 void DrawMoonMagicCageAtEnemyFeet(const EnemyInstance& runtime, const GameData::EnemyDefinition& def) {
     if (runtime.moonMagicCageEndTick <= RenderUtils::NowTickMs() ||
-        !RenderUtils::HasImage(g_moonMagicCageImage)) {
+        !RenderUtils::HasImage(g_moonMagicCageAsset.image)) {
         return;
     }
 
@@ -178,8 +178,8 @@ void DrawMoonMagicCageAtEnemyFeet(const EnemyInstance& runtime, const GameData::
     const int drawX = runtime.x - g_cameraX - drawW / 2;
     const int drawY = footY - g_cameraY - drawH / 2;
     RenderUtils::DrawImageAuto(
-        g_moonMagicCageImage,
-        g_moonMagicCageHasAlpha,
+        g_moonMagicCageAsset.image,
+        g_moonMagicCageAsset.hasAlpha,
         drawX,
         drawY,
         drawW,
@@ -354,14 +354,20 @@ void DrawEnemy() {
         int deathDrawH = enemyDef.drawHeight;
         ComputeEnemyDeathDrawSize(
             enemyDef,
-            g_enemyDeathImage,
+            g_enemyDeathAsset.image,
             g_enemyAnimReferenceWidth,
             g_enemyAnimReferenceHeight,
             deathDrawW,
             deathDrawH);
         const int deathSx = g_enemy.x - g_cameraX - deathDrawW / 2;
         const int deathSy = g_enemy.y - g_cameraY - deathDrawH / 2 + (enemyDef.drawHeight - deathDrawH) / 2;
-        RenderUtils::DrawImageAuto(g_enemyDeathImage, g_enemyDeathHasAlpha, deathSx, deathSy, deathDrawW, deathDrawH);
+        RenderUtils::DrawImageAuto(
+            g_enemyDeathAsset.image,
+            g_enemyDeathAsset.hasAlpha,
+            deathSx,
+            deathSy,
+            deathDrawW,
+            deathDrawH);
         return;
     }
 

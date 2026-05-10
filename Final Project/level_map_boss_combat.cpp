@@ -1,12 +1,10 @@
 #include "level_map_internal.h"
-#include "level_map_damage_rules.h"
+#include "level_map_combat_internal.h"
 
 #include <cmath>
 
 namespace LevelMapInternal {
 namespace {
-
-constexpr float kPi = 3.14159265358979323846f;
 
 float ToRadians(float degrees) {
     return degrees * (kPi / 180.0f);
@@ -23,16 +21,14 @@ bool PopSnowApeKingCrossBarrage(int& outType) {
 }
 
 void EnqueueSnowApeKingCrossBarrage(int barrageType) {
+    static_assert(kSnowApeKingCrossBarrageQueueMax > 0, "invalid capacity");
+
     if (barrageType != kSnowApeKingCrossBarrageTypeRing &&
         barrageType != kSnowApeKingCrossBarrageTypeSpiral) {
         return;
     }
 
     const size_t queueMax = static_cast<size_t>(kSnowApeKingCrossBarrageQueueMax);
-    if (queueMax == 0U) {
-        return;
-    }
-
     while (g_enemy.bossCrossBarrageQueue.size() >= queueMax) {
         g_enemy.bossCrossBarrageQueue.pop_front();
     }
@@ -60,7 +56,7 @@ void SpawnSnowApeKingCrossRingBurst(ULONGLONG nowTick) {
             kSnowApeKingCrossRingSpeedScale,
             nowTick,
             kSnowApeKingCrossBarrageHitDelayMs,
-            GetBossCrossRingProjectileDamage());
+            kBossCrossRingHitDamage);
     }
 }
 
@@ -84,7 +80,7 @@ void EmitSnowApeKingCrossSpiralBurst(ULONGLONG nowTick) {
             kSnowApeKingCrossSpiralSpeedScale,
             nowTick,
             kSnowApeKingCrossBarrageHitDelayMs,
-            GetBossCrossSpiralProjectileDamage());
+            kBossCrossSpiralHitDamage);
     }
 
     g_enemy.bossCrossSpiralBaseAngleDegrees += kSnowApeKingCrossSpiralAngleStepDegrees;
@@ -115,30 +111,28 @@ void StartSnowApeKingCrossSpiral(ULONGLONG nowTick) {
         (kSnowApeKingCrossSpiralBurstIntervalFrames > 0) ? (kSnowApeKingCrossSpiralBurstIntervalFrames - 1) : 0;
 }
 
-}  
+}
 
 void NotifySnowApeKingHpLossForCrossBarrage(int hpLost) {
+    static_assert(kSnowApeKingCrossBarrageHpStep > 0, "invalid step size");
+
     if (hpLost <= 0) {
         g_enemy.bossCrossBarrageLastHpLoss = 0;
         return;
     }
 
     const int step = kSnowApeKingCrossBarrageHpStep;
-    if (step <= 0) {
-        return;
-    }
-
     int lastHpLoss = g_enemy.bossCrossBarrageLastHpLoss;
     if (lastHpLoss < 0) {
         lastHpLoss = 0;
     }
 
     if (hpLost < lastHpLoss) {
-        
         g_enemy.bossCrossBarrageLastHpLoss = hpLost;
         return;
     }
 
+    // 按首领已损失血量阈值排入交叉弹幕。
     int nextThreshold = ((lastHpLoss / step) + 1) * step;
     while (nextThreshold <= hpLost) {
         TrySpawnPotionDropOnBossHpLossThreshold(g_enemy.x, g_enemy.y);
@@ -213,7 +207,7 @@ void SpawnSnowApeKingSpikeRow(float dirX, float dirY) {
     row.hitPlayer = false;
 
     g_enemySpikeRows.clear();
-    PushCapped(g_enemySpikeRows, row, 8U);
+    g_enemySpikeRows.push_back(row);
 }
 
 void UpdateSnowApeKingCrossBarrage(ULONGLONG now) {
@@ -280,4 +274,4 @@ void UpdateSnowApeKingCrossBarrage(ULONGLONG now) {
     }
 }
 
-}  
+}

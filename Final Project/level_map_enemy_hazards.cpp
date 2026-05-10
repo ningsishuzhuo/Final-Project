@@ -1,5 +1,5 @@
 #include "level_map_internal.h"
-#include "level_map_damage_rules.h"
+#include "level_map_combat_internal.h"
 
 namespace LevelMapInternal {
 
@@ -37,7 +37,7 @@ void UpdateEnemyShockwaves(ULONGLONG now) {
             const float bandOuter = wave.radius + static_cast<float>(tuning.hitRadius);
             const float minDistance = bandInner > 0.0f ? bandInner : 0.0f;
             if (distanceSquared >= minDistance * minDistance && distanceSquared <= bandOuter * bandOuter) {
-                ApplyPlayerHit(GetShockwaveHitDamage());
+                ApplyPlayerHit(kEnemyShockwaveHitDamage);
                 wave.hitPlayer = true;
             }
         }
@@ -84,7 +84,7 @@ void UpdateEnemySpikeRows(ULONGLONG now) {
             const float dx = static_cast<float>(g_playerX) - nearestX;
             const float dy = static_cast<float>(g_playerY) - nearestY;
             if (dx * dx + dy * dy <= kSnowApeKingSpikeHitRadius * kSnowApeKingSpikeHitRadius) {
-                ApplyPlayerHit(GetSnowApeKingSpikeRowDamage());
+                ApplyPlayerHit(kSnowApeKingSpikeHitDamage);
                 row.hitPlayer = true;
             }
         }
@@ -97,4 +97,4 @@ void UpdateEnemySpikeRows(ULONGLONG now) {
     g_enemySpikeRows.resize(writeIndex);
 }
 
-}  
+}

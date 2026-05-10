@@ -145,7 +145,6 @@
     <ClCompile Include="level_map_assets.cpp" />
     <ClCompile Include="level_map_apollo_attacks.cpp" />
     <ClCompile Include="level_map_boss_combat.cpp" />
-    <ClCompile Include="level_map_combat.cpp" />
     <ClCompile Include="level_map_combat_core.cpp" />
     <ClCompile Include="level_map_combat_helpers.cpp" />
     <ClCompile Include="level_map_player_attacks.cpp" />
@@ -159,7 +158,6 @@
     <ClCompile Include="level_map_obstacles.cpp" />
     <ClCompile Include="level_map_obstacle_rendering.cpp" />
     <ClCompile Include="level_map_battle_flow.cpp" />
-    <ClCompile Include="level_map_damage_rules.cpp" />
     <ClCompile Include="level_map_effect_rendering.cpp" />
     <ClCompile Include="level_map_enemy_effect_rendering.cpp" />
     <ClCompile Include="level_map_enemy_visibility.cpp" />
@@ -181,7 +179,6 @@
     <ClCompile Include="level_map_actor_rendering.cpp" />
     <ClCompile Include="level_map_hud.cpp" />
     <ClCompile Include="level_map_minimap.cpp" />
-    <ClCompile Include="level_map_result_overlay.cpp" />
     <ClCompile Include="level_map_ultimate_hud.cpp" />
     <ClCompile Include="level_map_background.cpp" />
     <ClCompile Include="level_map_projectile_rendering.cpp" />
@@ -214,7 +211,6 @@
     <ClInclude Include="level_map_rendering_effects_internal.h" />
     <ClInclude Include="level_map_obstacle_internal.h" />
     <ClInclude Include="level_map_battle_flow.h" />
-    <ClInclude Include="level_map_damage_rules.h" />
     <ClInclude Include="level_map_enemy_visibility.h" />
     <ClInclude Include="level_map_enemy_ai_internal.h" />
     <ClInclude Include="level_map_enemy_ai_runtime_internal.h" />

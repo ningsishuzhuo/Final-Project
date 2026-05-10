@@ -12,7 +12,7 @@ void DrawProjectileArrayLayered(
     int h,
     int minYInclusive,
     int maxYExclusive) {
-    if (!RenderUtils::HasImage(image) && !RenderUtils::HasImage(g_loveUltimateBulletImage)) {
+    if (!RenderUtils::HasImage(image) && !RenderUtils::HasImage(g_loveUltimateBulletAsset.image)) {
         return;
     }
 
@@ -30,7 +30,7 @@ void DrawProjectileArrayLayered(
             continue;
         }
 
-        if (projectile.loveUltimateBullet && RenderUtils::HasImage(g_loveUltimateBulletImage)) {
+        if (projectile.loveUltimateBullet && RenderUtils::HasImage(g_loveUltimateBulletAsset.image)) {
             if (RenderUtils::IsGdiplusReady()) {
                 RenderUtils::DrawImageFileRotated(
                     AssetPaths::GetLoveUltimateBulletPath(),
@@ -43,8 +43,8 @@ void DrawProjectileArrayLayered(
             }
 
             RenderUtils::DrawImageAuto(
-                g_loveUltimateBulletImage,
-                g_loveUltimateBulletHasAlpha,
+                g_loveUltimateBulletAsset.image,
+                g_loveUltimateBulletAsset.hasAlpha,
                 centerX - kLoveUltimateBulletDrawW / 2,
                 centerY - kLoveUltimateBulletDrawH / 2,
                 kLoveUltimateBulletDrawW,

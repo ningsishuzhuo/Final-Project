@@ -7,7 +7,7 @@ namespace LevelMapInternal {
 namespace {
 
 void DrawEnemySpikeRowsLayeredImpl(int minYInclusive, int maxYExclusive) {
-    if (!RenderUtils::HasImage(g_enemyIceSpikeImage)) {
+    if (!RenderUtils::HasImage(g_enemyIceSpikeAsset.image)) {
         return;
     }
 
@@ -38,8 +38,8 @@ void DrawEnemySpikeRowsLayeredImpl(int minYInclusive, int maxYExclusive) {
 
             
             RenderUtils::DrawImageAuto(
-                g_enemyIceSpikeImage,
-                g_enemyIceSpikeHasAlpha,
+                g_enemyIceSpikeAsset.image,
+                g_enemyIceSpikeAsset.hasAlpha,
                 centerX - spikeW / 2,
                 centerY - spikeH,
                 spikeW,

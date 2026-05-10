@@ -1,17 +1,14 @@
 #include "game_settings_module.h"
 
-#include "asset_paths.h"
 #include "menu_music.h"
+#include "menu_render_utils.h"
+#include "render_utils.h"
 
 #include <graphics.h>
 #include <cstdio>
 #include <tchar.h>
-#include <windows.h>
-#include <wingdi.h>
 
 namespace {
-
-constexpr const TCHAR* kTypeFontFace = _T("Type");
 
 constexpr int kSettingsPageCount = 2;
 constexpr const TCHAR* kSettingsPageTitles[kSettingsPageCount] = {
@@ -59,34 +56,18 @@ constexpr const TCHAR* kVolumeRowLabels[2] = {
     _T("游戏音量")
 };
 
+constexpr const TCHAR* kVolumeButtonLabels[VOL_BTN_COUNT] = {
+    _T("-"),
+    _T("+"),
+    _T("-"),
+    _T("+")
+};
+
 RECT g_actionRects[SETTINGS_BTN_COUNT];
 bool g_actionHovered[SETTINGS_BTN_COUNT] = { false, false, false };
 RECT g_volumeButtonRects[VOL_BTN_COUNT];
 bool g_volumeButtonHovered[VOL_BTN_COUNT] = { false, false, false };
 int g_currentPage = 0;
-bool g_typeFontLoaded = false;
-
-const TCHAR* GetTypeFontFace() {
-    return g_typeFontLoaded ? kTypeFontFace : _T("黑体");
-}
-
-void EnsureTypeFontLoaded() {
-    if (g_typeFontLoaded) {
-        return;
-    }
-    const int added = AddFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
-    if (added > 0) {
-        g_typeFontLoaded = true;
-    }
-}
-
-void UnloadTypeFont() {
-    if (!g_typeFontLoaded) {
-        return;
-    }
-    RemoveFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
-    g_typeFontLoaded = false;
-}
 
 void InitializeActionRects() {
     g_actionRects[SETTINGS_BTN_BACK] = { 28, 24, 28 + 140, 24 + 50 };
@@ -116,22 +97,15 @@ void InitializeVolumeButtonRects() {
     }
 }
 
-bool IsPointInRect(int x, int y, const RECT& rect) {
-    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-}
-
 void DrawTitle() {
     RECT titleRect = { 0, 18, GAME_WINDOW_WIDTH, 120 };
-    RECT shadowRect = titleRect;
-    OffsetRect(&shadowRect, 2, 2);
-
-    setbkmode(TRANSPARENT);
-    settextstyle(kTitleFontSize, 0, GetTypeFontFace());
-    settextcolor(RGB(36, 54, 90));
-    drawtext(kSettingsPageTitles[g_currentPage], &shadowRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-    settextcolor(RGB(236, 244, 255));
-    drawtext(kSettingsPageTitles[g_currentPage], &titleRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    MenuRenderUtils::DrawShadowedText(
+        kSettingsPageTitles[g_currentPage],
+        titleRect,
+        kTitleFontSize,
+        RGB(236, 244, 255),
+        RGB(36, 54, 90),
+        2);
 }
 
 void DrawBackground() {
@@ -140,23 +114,13 @@ void DrawBackground() {
 }
 
 void DrawActionButtons() {
-    setbkmode(TRANSPARENT);
-    settextstyle(kActionFontSize, 0, GetTypeFontFace());
-
     for (int i = 0; i < SETTINGS_BTN_COUNT; ++i) {
         const RECT& rect = g_actionRects[i];
         const bool hovered = g_actionHovered[i];
         const COLORREF mainColor = hovered ? RGB(255, 255, 255) : RGB(208, 222, 244);
         const COLORREF shadowColor = hovered ? RGB(98, 128, 182) : RGB(36, 54, 90);
 
-        RECT shadowRect = rect;
-        OffsetRect(&shadowRect, 1, 1);
-        settextcolor(shadowColor);
-        drawtext(kSettingsActionLabels[i], &shadowRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-        RECT textRect = rect;
-        settextcolor(mainColor);
-        drawtext(kSettingsActionLabels[i], &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        MenuRenderUtils::DrawShadowedText(kSettingsActionLabels[i], rect, kActionFontSize, mainColor, shadowColor);
     }
 }
 
@@ -180,6 +144,15 @@ void DrawOperationPage() {
     }
 }
 
+void DrawVolumeButton(VolumeButtonId buttonId, const TCHAR* label) {
+    const RECT& rect = g_volumeButtonRects[buttonId];
+    const bool hovered = g_volumeButtonHovered[buttonId];
+    const COLORREF mainColor = hovered ? RGB(255, 255, 255) : RGB(208, 222, 244);
+    const COLORREF shadowColor = hovered ? RGB(98, 128, 182) : RGB(36, 54, 90);
+
+    MenuRenderUtils::DrawShadowedText(label, rect, kVolumeFontSize, mainColor, shadowColor);
+}
+
 void DrawVolumePage() {
     setbkmode(TRANSPARENT);
     settextstyle(kVolumeFontSize, 0, _T("黑体"));
@@ -193,27 +166,13 @@ void DrawVolumePage() {
     drawtext(kVolumeRowLabels[0], &bgLabelRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     drawtext(kVolumeRowLabels[1], &gameLabelRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-    const int bgVolume = MenuMusic::GetBackgroundVolumeLevel();
-    const int gameVolume = MenuMusic::GetGameVolumeLevel();
-
     TCHAR bgVolumeText[16] = { 0 };
     TCHAR gameVolumeText[16] = { 0 };
-    _stprintf_s(bgVolumeText, _T("%d"), bgVolume);
-    _stprintf_s(gameVolumeText, _T("%d"), gameVolume);
+    _stprintf_s(bgVolumeText, _T("%d"), MenuMusic::GetBackgroundVolumeLevel());
+    _stprintf_s(gameVolumeText, _T("%d"), MenuMusic::GetGameVolumeLevel());
 
     for (int i = 0; i < VOL_BTN_COUNT; ++i) {
-        RECT textRect = g_volumeButtonRects[i];
-        const bool hovered = g_volumeButtonHovered[i];
-        const COLORREF mainColor = hovered ? RGB(255, 255, 255) : RGB(208, 222, 244);
-        const COLORREF shadowColor = hovered ? RGB(98, 128, 182) : RGB(36, 54, 90);
-        const TCHAR* label = (i == VOL_BTN_BG_MINUS || i == VOL_BTN_GAME_MINUS) ? _T("-") : _T("+");
-
-        RECT shadowRect = textRect;
-        OffsetRect(&shadowRect, 1, 1);
-        settextcolor(shadowColor);
-        drawtext(label, &shadowRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-        settextcolor(mainColor);
-        drawtext(label, &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        DrawVolumeButton(static_cast<VolumeButtonId>(i), kVolumeButtonLabels[i]);
     }
 
     RECT bgValueRect = { centerX - 34, g_volumeButtonRects[VOL_BTN_BG_MINUS].top, centerX + 34, g_volumeButtonRects[VOL_BTN_BG_MINUS].bottom };
@@ -230,7 +189,7 @@ void UpdateHover(int x, int y) {
         hoverRect.right += kActionButtonPadding;
         hoverRect.top -= kActionButtonPadding;
         hoverRect.bottom += kActionButtonPadding;
-        g_actionHovered[i] = IsPointInRect(x, y, hoverRect);
+        g_actionHovered[i] = RenderUtils::IsPointInRect(x, y, hoverRect);
     }
 
     for (int i = 0; i < VOL_BTN_COUNT; ++i) {
@@ -239,7 +198,7 @@ void UpdateHover(int x, int y) {
         hoverRect.right += kVolumeButtonPadding;
         hoverRect.top -= kVolumeButtonPadding;
         hoverRect.bottom += kVolumeButtonPadding;
-        g_volumeButtonHovered[i] = IsPointInRect(x, y, hoverRect);
+        g_volumeButtonHovered[i] = RenderUtils::IsPointInRect(x, y, hoverRect);
     }
 }
 
@@ -248,14 +207,14 @@ void UpdateHover(int x, int y) {
 namespace GameSettingsModule {
 
 void Initialize() {
-    EnsureTypeFontLoaded();
+    MenuRenderUtils::AcquireMenuFont();
     InitializeActionRects();
     InitializeVolumeButtonRects();
     g_currentPage = 0;
 }
 
 void Shutdown() {
-    UnloadTypeFont();
+    MenuRenderUtils::ReleaseMenuFont();
 }
 
 void EnterSettings() {
@@ -285,33 +244,33 @@ void HandleMouseMove(int x, int y) {
 
 void HandleMouseClick(int x, int y, GameState& currentState) {
     if (g_currentPage == 1) {
-        if (IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_BG_MINUS])) {
+        if (RenderUtils::IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_BG_MINUS])) {
             MenuMusic::AdjustBackgroundVolume(-1);
             return;
         }
-        if (IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_BG_PLUS])) {
+        if (RenderUtils::IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_BG_PLUS])) {
             MenuMusic::AdjustBackgroundVolume(1);
             return;
         }
-        if (IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_GAME_MINUS])) {
+        if (RenderUtils::IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_GAME_MINUS])) {
             MenuMusic::AdjustGameVolume(-1);
             return;
         }
-        if (IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_GAME_PLUS])) {
+        if (RenderUtils::IsPointInRect(x, y, g_volumeButtonRects[VOL_BTN_GAME_PLUS])) {
             MenuMusic::AdjustGameVolume(1);
             return;
         }
     }
 
-    if (IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_BACK])) {
+    if (RenderUtils::IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_BACK])) {
         currentState = MAIN_MENU;
         return;
     }
-    if (IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_PREV])) {
+    if (RenderUtils::IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_PREV])) {
         g_currentPage = (g_currentPage - 1 + kSettingsPageCount) % kSettingsPageCount;
         return;
     }
-    if (IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_NEXT])) {
+    if (RenderUtils::IsPointInRect(x, y, g_actionRects[SETTINGS_BTN_NEXT])) {
         g_currentPage = (g_currentPage + 1) % kSettingsPageCount;
         return;
     }

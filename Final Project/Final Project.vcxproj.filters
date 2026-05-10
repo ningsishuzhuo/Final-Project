@@ -69,9 +69,6 @@
     <ClCompile Include="level_map_boss_combat.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="level_map_combat.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="level_map_combat_core.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -109,9 +106,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="level_map_battle_flow.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="level_map_damage_rules.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="level_map_effect_rendering.cpp">
@@ -169,9 +163,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="level_map_minimap.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="level_map_result_overlay.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="level_map_ultimate_hud.cpp">
@@ -264,9 +255,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="level_map_battle_flow.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="level_map_damage_rules.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="level_map_enemy_visibility.h">

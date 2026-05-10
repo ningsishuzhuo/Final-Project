@@ -18,8 +18,6 @@ float CurrentEnemyObstacleRadius() {
     }
 }
 
-constexpr float kPi = 3.14159265358979323846f;
-
 void ClampEnemyPointToMap(float& x, float& y) {
     const float minX = static_cast<float>(g_iceRegionRect.left);
     const float maxX = static_cast<float>(g_iceRegionRect.right);
@@ -358,4 +356,4 @@ void BuildRegions() {
     };
 }
 
-}  
+}

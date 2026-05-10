@@ -28,10 +28,10 @@ void DrawMoonRainAimCircle(float centerWorldX, float centerWorldY, float radius)
         drawSize = kMoonRainAimCircleMaxDrawSize;
     }
 
-    if (RenderUtils::HasImage(g_moonRainAimCircleImage)) {
+    if (RenderUtils::HasImage(g_moonRainAimCircleAsset.image)) {
         RenderUtils::DrawImageAuto(
-            g_moonRainAimCircleImage,
-            g_moonRainAimCircleHasAlpha,
+            g_moonRainAimCircleAsset.image,
+            g_moonRainAimCircleAsset.hasAlpha,
             centerX - drawSize / 2,
             centerY - drawSize / 2,
             drawSize,
@@ -76,10 +76,10 @@ void DrawMoonRainArrowBurst(ULONGLONG now) {
 
         const int drawX = static_cast<int>(std::round(worldX)) - g_cameraX - kMoonRainArrowDrawW / 2;
         const int drawY = static_cast<int>(std::round(worldY)) - g_cameraY - kMoonRainArrowDrawH / 2;
-        if (RenderUtils::HasImage(g_moonRainArrowImage)) {
+        if (RenderUtils::HasImage(g_moonRainArrowAsset.image)) {
             RenderUtils::DrawImageAuto(
-                g_moonRainArrowImage,
-                g_moonRainArrowHasAlpha,
+                g_moonRainArrowAsset.image,
+                g_moonRainArrowAsset.hasAlpha,
                 drawX,
                 drawY,
                 kMoonRainArrowDrawW,
@@ -122,10 +122,10 @@ void DrawMoonUltimateFireballEffects(ULONGLONG now, bool drawAura, bool drawFire
         if (drawAura) {
             const int auraX = static_cast<int>(std::round(fireball.targetX)) - g_cameraX - auraSize / 2;
             const int auraY = static_cast<int>(std::round(fireball.targetY)) - g_cameraY - auraSize / 2;
-            if (RenderUtils::HasImage(g_moonUltimateFireballAuraImage)) {
+            if (RenderUtils::HasImage(g_moonUltimateFireballAuraAsset.image)) {
                 RenderUtils::DrawImageAuto(
-                    g_moonUltimateFireballAuraImage,
-                    g_moonUltimateFireballAuraHasAlpha,
+                    g_moonUltimateFireballAuraAsset.image,
+                    g_moonUltimateFireballAuraAsset.hasAlpha,
                     auraX,
                     auraY,
                     auraSize,
@@ -157,10 +157,10 @@ void DrawMoonUltimateFireballEffects(ULONGLONG now, bool drawAura, bool drawFire
         const float worldY = fireball.startY + (fireball.targetY - fireball.startY) * t;
         const int drawX = static_cast<int>(std::round(worldX)) - g_cameraX - kMoonUltimateFireballDrawW / 2;
         const int drawY = static_cast<int>(std::round(worldY)) - g_cameraY - kMoonUltimateFireballDrawH / 2;
-        if (RenderUtils::HasImage(g_moonUltimateFireballImage)) {
+        if (RenderUtils::HasImage(g_moonUltimateFireballAsset.image)) {
             RenderUtils::DrawImageAuto(
-                g_moonUltimateFireballImage,
-                g_moonUltimateFireballHasAlpha,
+                g_moonUltimateFireballAsset.image,
+                g_moonUltimateFireballAsset.hasAlpha,
                 drawX,
                 drawY,
                 kMoonUltimateFireballDrawW,
@@ -174,7 +174,7 @@ void DrawMoonUltimateFireballEffects(ULONGLONG now, bool drawAura, bool drawFire
 }
 
 void DrawSunSwordQiProjectiles() {
-    if (!RenderUtils::HasImage(g_sunUltimateSwordQiImage)) {
+    if (!RenderUtils::HasImage(g_sunUltimateSwordQiAsset.image)) {
         return;
     }
 
@@ -201,8 +201,8 @@ void DrawSunSwordQiProjectiles() {
         }
 
         RenderUtils::DrawImageAuto(
-            g_sunUltimateSwordQiImage,
-            g_sunUltimateSwordQiHasAlpha,
+            g_sunUltimateSwordQiAsset.image,
+            g_sunUltimateSwordQiAsset.hasAlpha,
             centerX - kSunUltimateSwordQiDrawW / 2,
             centerY - kSunUltimateSwordQiDrawH / 2,
             kSunUltimateSwordQiDrawW,

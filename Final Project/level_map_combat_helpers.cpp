@@ -57,39 +57,54 @@ void CompactProjectileArray(std::vector<Projectile>& arr) {
     arr.resize(writeIndex);
 }
 
-void PushProjectileCapped(
-    std::vector<Projectile>& projectiles,
-    const Projectile& projectile,
-    size_t cap,
-    size_t& overflowCursor) {
-    if (cap == 0U) {
+void PushPlayerProjectileCapped(const Projectile& projectile) {
+    static_assert(kPlayerProjectileMaxCount > 0, "invalid capacity");
+
+    if (g_playerProjectiles.size() < static_cast<size_t>(kPlayerProjectileMaxCount)) {
+        g_playerProjectiles.push_back(projectile);
         return;
     }
 
-    if (projectiles.size() < cap) {
-        projectiles.push_back(projectile);
-        return;
-    }
-
-    const size_t size = projectiles.size();
-    if (size == 0U) {
-        return;
-    }
-
-    const size_t start = overflowCursor % size;
+    const size_t size = g_playerProjectiles.size();
+    const size_t start = g_playerProjectileOverflowCursor % size;
     for (size_t offset = 0; offset < size; ++offset) {
         const size_t index = (start + offset) % size;
-        if (projectiles[index].active) {
+        if (g_playerProjectiles[index].active) {
             continue;
         }
 
-        projectiles[index] = projectile;
-        overflowCursor = (index + 1U) % size;
+        g_playerProjectiles[index] = projectile;
+        g_playerProjectileOverflowCursor = (index + 1U) % size;
         return;
     }
 
-    projectiles[start] = projectile;
-    overflowCursor = (start + 1U) % size;
+    g_playerProjectiles[start] = projectile;
+    g_playerProjectileOverflowCursor = (start + 1U) % size;
+}
+
+void PushEnemyProjectileCapped(const Projectile& projectile) {
+    static_assert(kEnemyBulletMaxCount > 0, "invalid capacity");
+
+    if (g_enemyProjectiles.size() < static_cast<size_t>(kEnemyBulletMaxCount)) {
+        g_enemyProjectiles.push_back(projectile);
+        return;
+    }
+
+    const size_t size = g_enemyProjectiles.size();
+    const size_t start = g_enemyProjectileOverflowCursor % size;
+    for (size_t offset = 0; offset < size; ++offset) {
+        const size_t index = (start + offset) % size;
+        if (g_enemyProjectiles[index].active) {
+            continue;
+        }
+
+        g_enemyProjectiles[index] = projectile;
+        g_enemyProjectileOverflowCursor = (index + 1U) % size;
+        return;
+    }
+
+    g_enemyProjectiles[start] = projectile;
+    g_enemyProjectileOverflowCursor = (start + 1U) % size;
 }
 
 }  

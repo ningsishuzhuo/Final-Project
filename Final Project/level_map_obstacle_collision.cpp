@@ -1,4 +1,5 @@
 #include "level_map_internal.h"
+#include "level_map_combat_internal.h"
 #include "level_map_obstacle_internal.h"
 
 #include <cmath>
@@ -17,6 +18,19 @@ struct ObstacleAabb {
     float maxX = 0.0f;
     float minY = 0.0f;
     float maxY = 0.0f;
+};
+
+enum class PushDirection {
+    Left,
+    Right,
+    Top,
+    Bottom
+};
+
+struct ResolvedCirclePosition {
+    float x = 0.0f;
+    float y = 0.0f;
+    bool blocked = false;
 };
 
 ObstacleAabb GetObstacleAabb(const MapObstacle& obstacle, float collisionScale) {
@@ -88,93 +102,132 @@ bool PointIntersectsObstacle(const MapObstacle& obstacle, float x, float y) {
         y <= bounds.maxY;
 }
 
-bool IsPointInFrontArc(float relX, float relY, float dirX, float dirY, float range) {
-    const float rangeSq = range * range;
-    if (relX * relX + relY * relY > rangeSq) {
-        return false;
+void PushOutFromAabb(float& x, float& y, const ObstacleAabb& bounds, float offset) {
+    // 处理圆心落在盒内时没有推出梯度的情况。
+    const float distanceToLeft = std::fabs(x - bounds.minX);
+    const float distanceToRight = std::fabs(bounds.maxX - x);
+    const float distanceToTop = std::fabs(y - bounds.minY);
+    const float distanceToBottom = std::fabs(bounds.maxY - y);
+
+    float minDistance = distanceToLeft;
+    PushDirection direction = PushDirection::Left;
+
+    if (distanceToRight < minDistance) {
+        minDistance = distanceToRight;
+        direction = PushDirection::Right;
     }
-    return relX * dirX + relY * dirY >= 0.0f;
+    if (distanceToTop < minDistance) {
+        minDistance = distanceToTop;
+        direction = PushDirection::Top;
+    }
+    if (distanceToBottom < minDistance) {
+        direction = PushDirection::Bottom;
+    }
+
+    switch (direction) {
+    case PushDirection::Left:
+        x = bounds.minX - offset;
+        break;
+    case PushDirection::Right:
+        x = bounds.maxX + offset;
+        break;
+    case PushDirection::Top:
+        y = bounds.minY - offset;
+        break;
+    case PushDirection::Bottom:
+        y = bounds.maxY + offset;
+        break;
+    }
 }
 
-}  
+bool IsBreakableCrate(const MapObstacle& obstacle) {
+    return obstacle.kind == MapObstacleKind::Crate &&
+        obstacle.destructible &&
+        !obstacle.destroyed;
+}
+
+void DamageBreakableObstacle(MapObstacle& obstacle) {
+    if (!obstacle.destructible || obstacle.destroyed) {
+        return;
+    }
+
+    --obstacle.hp;
+    if (obstacle.hp <= 0) {
+        obstacle.destroyed = true;
+        SpawnDropsOnCrateDestroyed(static_cast<int>(obstacle.x), static_cast<int>(obstacle.y));
+    }
+}
+
+ResolvedCirclePosition ResolveCircleMovementAgainstObstacles(
+    float currentX,
+    float currentY,
+    float previousX,
+    float previousY,
+    float radius) {
+    bool blocked = false;
+    for (const MapObstacle& obstacle : Obstacles()) {
+        if (CircleIntersectsObstacle(obstacle, currentX, currentY, radius)) {
+            blocked = true;
+            break;
+        }
+    }
+    if (!blocked) {
+        return { currentX, currentY, false };
+    }
+
+    // 完整位移受阻时尝试沿单轴滑动。
+    bool blockXOnly = false;
+    bool blockYOnly = false;
+    for (const MapObstacle& obstacle : Obstacles()) {
+        if (CircleIntersectsObstacle(obstacle, currentX, previousY, radius)) {
+            blockXOnly = true;
+        }
+        if (CircleIntersectsObstacle(obstacle, previousX, currentY, radius)) {
+            blockYOnly = true;
+        }
+    }
+
+    if (!blockXOnly) {
+        return { currentX, previousY, true };
+    }
+    if (!blockYOnly) {
+        return { previousX, currentY, true };
+    }
+
+    return { previousX, previousY, true };
+}
+
+}
 
 void ResolvePlayerPositionAgainstObstacles(int previousX, int previousY) {
     constexpr float kPlayerObstacleRadius = 28.0f;
-    bool blocked = false;
-    for (const MapObstacle& obstacle : Obstacles()) {
-        if (CircleIntersectsObstacle(obstacle, static_cast<float>(g_playerX), static_cast<float>(g_playerY), kPlayerObstacleRadius)) {
-            blocked = true;
-            break;
-        }
-    }
-    if (!blocked) {
+    const ResolvedCirclePosition resolved = ResolveCircleMovementAgainstObstacles(
+        static_cast<float>(g_playerX),
+        static_cast<float>(g_playerY),
+        static_cast<float>(previousX),
+        static_cast<float>(previousY),
+        kPlayerObstacleRadius);
+    if (!resolved.blocked) {
         return;
     }
 
-    const int candidateX = g_playerX;
-    const int candidateY = g_playerY;
-    bool blockXOnly = false;
-    bool blockYOnly = false;
-    for (const MapObstacle& obstacle : Obstacles()) {
-        if (CircleIntersectsObstacle(obstacle, static_cast<float>(candidateX), static_cast<float>(previousY), kPlayerObstacleRadius)) {
-            blockXOnly = true;
-        }
-        if (CircleIntersectsObstacle(obstacle, static_cast<float>(previousX), static_cast<float>(candidateY), kPlayerObstacleRadius)) {
-            blockYOnly = true;
-        }
-    }
-
-    if (!blockXOnly) {
-        g_playerY = previousY;
-        return;
-    }
-    if (!blockYOnly) {
-        g_playerX = previousX;
-        return;
-    }
-
-    g_playerX = previousX;
-    g_playerY = previousY;
+    g_playerX = static_cast<int>(resolved.x);
+    g_playerY = static_cast<int>(resolved.y);
 }
 
 void ResolveEnemyPositionAgainstObstacles(float previousX, float previousY, float radius) {
-    bool blocked = false;
-    for (const MapObstacle& obstacle : Obstacles()) {
-        if (CircleIntersectsObstacle(obstacle, g_enemy.exactX, g_enemy.exactY, radius)) {
-            blocked = true;
-            break;
-        }
-    }
-    if (!blocked) {
+    const ResolvedCirclePosition resolved = ResolveCircleMovementAgainstObstacles(
+        g_enemy.exactX,
+        g_enemy.exactY,
+        previousX,
+        previousY,
+        radius);
+    if (!resolved.blocked) {
         return;
     }
 
-    const float candidateX = g_enemy.exactX;
-    const float candidateY = g_enemy.exactY;
-    bool blockXOnly = false;
-    bool blockYOnly = false;
-    for (const MapObstacle& obstacle : Obstacles()) {
-        if (CircleIntersectsObstacle(obstacle, candidateX, previousY, radius)) {
-            blockXOnly = true;
-        }
-        if (CircleIntersectsObstacle(obstacle, previousX, candidateY, radius)) {
-            blockYOnly = true;
-        }
-    }
-
-    if (!blockXOnly) {
-        g_enemy.exactY = previousY;
-        RefreshEnemyGridPosition();
-        return;
-    }
-    if (!blockYOnly) {
-        g_enemy.exactX = previousX;
-        RefreshEnemyGridPosition();
-        return;
-    }
-
-    g_enemy.exactX = previousX;
-    g_enemy.exactY = previousY;
+    g_enemy.exactX = resolved.x;
+    g_enemy.exactY = resolved.y;
     RefreshEnemyGridPosition();
 }
 
@@ -185,13 +238,7 @@ bool HandleProjectileObstacleHit(Projectile& projectile) {
         }
 
         projectile.active = false;
-        if (obstacle.destructible && !obstacle.destroyed) {
-            --obstacle.hp;
-            if (obstacle.hp <= 0) {
-                obstacle.destroyed = true;
-                SpawnDropsOnCrateDestroyed(static_cast<int>(obstacle.x), static_cast<int>(obstacle.y));
-            }
-        }
+        DamageBreakableObstacle(obstacle);
         return true;
     }
     return false;
@@ -203,7 +250,7 @@ void ApplyMeleeObstacleHitInFrontArc(float originX, float originY, float dirX, f
     }
 
     for (MapObstacle& obstacle : Obstacles()) {
-        if (obstacle.kind != MapObstacleKind::Crate || !obstacle.destructible || obstacle.destroyed) {
+        if (!IsBreakableCrate(obstacle)) {
             continue;
         }
 
@@ -213,11 +260,7 @@ void ApplyMeleeObstacleHitInFrontArc(float originX, float originY, float dirX, f
             continue;
         }
 
-        --obstacle.hp;
-        if (obstacle.hp <= 0) {
-            obstacle.destroyed = true;
-            SpawnDropsOnCrateDestroyed(static_cast<int>(obstacle.x), static_cast<int>(obstacle.y));
-        }
+        DamageBreakableObstacle(obstacle);
     }
 }
 
@@ -228,7 +271,7 @@ void ApplyCircleObstacleHit(float centerX, float centerY, float radius) {
 
     const float radiusSq = radius * radius;
     for (MapObstacle& obstacle : Obstacles()) {
-        if (obstacle.kind != MapObstacleKind::Crate || !obstacle.destructible || obstacle.destroyed) {
+        if (!IsBreakableCrate(obstacle)) {
             continue;
         }
 
@@ -238,11 +281,7 @@ void ApplyCircleObstacleHit(float centerX, float centerY, float radius) {
             continue;
         }
 
-        --obstacle.hp;
-        if (obstacle.hp <= 0) {
-            obstacle.destroyed = true;
-            SpawnDropsOnCrateDestroyed(static_cast<int>(obstacle.x), static_cast<int>(obstacle.y));
-        }
+        DamageBreakableObstacle(obstacle);
     }
 }
 
@@ -292,42 +331,7 @@ void ResolveCircleOutsideObstacles(float& x, float& y, float radius) {
             continue;
         }
 
-        const float distanceToLeft = std::fabs(x - hitBounds.minX);
-        const float distanceToRight = std::fabs(hitBounds.maxX - x);
-        const float distanceToTop = std::fabs(y - hitBounds.minY);
-        const float distanceToBottom = std::fabs(hitBounds.maxY - y);
-
-        float minDistance = distanceToLeft;
-        enum class PushDirection { Left, Right, Top, Bottom };
-        PushDirection direction = PushDirection::Left;
-
-        if (distanceToRight < minDistance) {
-            minDistance = distanceToRight;
-            direction = PushDirection::Right;
-        }
-        if (distanceToTop < minDistance) {
-            minDistance = distanceToTop;
-            direction = PushDirection::Top;
-        }
-        if (distanceToBottom < minDistance) {
-            direction = PushDirection::Bottom;
-        }
-
-        const float offset = effectiveRadius + kPushOutEpsilon;
-        switch (direction) {
-        case PushDirection::Left:
-            x = hitBounds.minX - offset;
-            break;
-        case PushDirection::Right:
-            x = hitBounds.maxX + offset;
-            break;
-        case PushDirection::Top:
-            y = hitBounds.minY - offset;
-            break;
-        case PushDirection::Bottom:
-            y = hitBounds.maxY + offset;
-            break;
-        }
+        PushOutFromAabb(x, y, hitBounds, effectiveRadius + kPushOutEpsilon);
     }
 }
 
@@ -351,42 +355,8 @@ void ResolvePointOutsideObstacles(float& x, float& y) {
             return;
         }
 
-        const float distanceToLeft = std::fabs(x - hitBounds.minX);
-        const float distanceToRight = std::fabs(hitBounds.maxX - x);
-        const float distanceToTop = std::fabs(y - hitBounds.minY);
-        const float distanceToBottom = std::fabs(hitBounds.maxY - y);
-
-        float minDistance = distanceToLeft;
-        enum class PushDirection { Left, Right, Top, Bottom };
-        PushDirection direction = PushDirection::Left;
-
-        if (distanceToRight < minDistance) {
-            minDistance = distanceToRight;
-            direction = PushDirection::Right;
-        }
-        if (distanceToTop < minDistance) {
-            minDistance = distanceToTop;
-            direction = PushDirection::Top;
-        }
-        if (distanceToBottom < minDistance) {
-            direction = PushDirection::Bottom;
-        }
-
-        switch (direction) {
-        case PushDirection::Left:
-            x = hitBounds.minX - kPushOutEpsilon;
-            break;
-        case PushDirection::Right:
-            x = hitBounds.maxX + kPushOutEpsilon;
-            break;
-        case PushDirection::Top:
-            y = hitBounds.minY - kPushOutEpsilon;
-            break;
-        case PushDirection::Bottom:
-            y = hitBounds.maxY + kPushOutEpsilon;
-            break;
-        }
+        PushOutFromAabb(x, y, hitBounds, kPushOutEpsilon);
     }
 }
 
-}  
+}

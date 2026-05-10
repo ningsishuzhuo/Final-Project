@@ -122,6 +122,10 @@ bool HasImage(const IMAGE& image) {
     return image.getwidth() > 0 && image.getheight() > 0;
 }
 
+bool IsPointInRect(int x, int y, const RECT& rect) {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 ULONGLONG NowTickMs() {
     using GetTickCount64Proc = ULONGLONG(WINAPI*)();
     static GetTickCount64Proc proc = reinterpret_cast<GetTickCount64Proc>(

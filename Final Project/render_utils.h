@@ -26,6 +26,7 @@ struct AnimatedGif {
 bool HasImage(const IMAGE& image);
 ULONGLONG NowTickMs();
 bool HasMeaningfulAlpha(const IMAGE& image);
+bool IsPointInRect(int x, int y, const RECT& rect);
 
 void AcquireGdiplus();
 void ReleaseGdiplus();

@@ -1,12 +1,12 @@
 #include "level_map_internal.h"
 
+#include <cstddef>
 #include <cmath>
 #include <cstdlib>
 
 namespace LevelMapInternal {
 namespace {
 
-constexpr float kPi = 3.14159265358979323846f;
 constexpr float kScatterSpeedMin = 1.0f;
 constexpr float kScatterSpeedMax = 3.0f;
 constexpr int kSettleFramesMin = 16;
@@ -26,7 +26,7 @@ struct DropRenderInfo {
     COLORREF fallbackColor = RGB(98, 210, 255);
 };
 
-struct EnergyDropRule {
+struct EnergyDropReward {
     int count = 0;
     int value = 0;
 };
@@ -109,23 +109,39 @@ void ApplyDropPickupEffect(const EnergyDrop& drop) {
 DropRenderInfo GetDropRenderInfo(EnergyDrop::Kind kind) {
     switch (kind) {
     case EnergyDrop::Kind::RecoverPotion:
-        return DropRenderInfo{ &g_recoverPotionDropImage, g_recoverPotionDropHasAlpha, kPotionDropDrawSize, RGB(182, 96, 234) };
+        return DropRenderInfo{ &g_recoverPotionDropAsset.image, g_recoverPotionDropAsset.hasAlpha, kPotionDropDrawSize, RGB(182, 96, 234) };
     case EnergyDrop::Kind::EnergyPotion:
-        return DropRenderInfo{ &g_energyPotionDropImage, g_energyPotionDropHasAlpha, kPotionDropDrawSize, RGB(94, 172, 255) };
+        return DropRenderInfo{ &g_energyPotionDropAsset.image, g_energyPotionDropAsset.hasAlpha, kPotionDropDrawSize, RGB(94, 172, 255) };
     case EnergyDrop::Kind::LifePotion:
-        return DropRenderInfo{ &g_lifePotionDropImage, g_lifePotionDropHasAlpha, kPotionDropDrawSize, RGB(255, 110, 94) };
+        return DropRenderInfo{ &g_lifePotionDropAsset.image, g_lifePotionDropAsset.hasAlpha, kPotionDropDrawSize, RGB(255, 110, 94) };
     case EnergyDrop::Kind::Energy:
     default:
-        return DropRenderInfo{ &g_energyDropImage, g_energyDropHasAlpha, kEnergyDropDrawSize, RGB(98, 210, 255) };
+        return DropRenderInfo{ &g_energyDropAsset.image, g_energyDropAsset.hasAlpha, kEnergyDropDrawSize, RGB(98, 210, 255) };
     }
 }
 
-void PushEnergyDropCapped(const EnergyDrop& drop) {
-    const size_t cap = static_cast<size_t>(kEnergyDropMaxCount);
-    if (cap == 0U) {
-        return;
+EnergyDropReward GetEnemyEnergyDropReward(const GameData::EnemyDefinition& enemyDef) {
+    switch (enemyDef.tier) {
+    case GameData::EnemyTier::Boss:
+        return { 22, 3 };
+    case GameData::EnemyTier::Elite:
+        return { 12, 1 };
+    case GameData::EnemyTier::Normal:
+        return { 6, 1 };
     }
+    return { 6, 1 };
+}
 
+bool HasPotionDropChance(PotionDropRates rates) {
+    return rates.recoverPercent != 0 ||
+        rates.energyPercent != 0 ||
+        rates.lifePercent != 0;
+}
+
+void PushEnergyDropCapped(const EnergyDrop& drop) {
+    static_assert(kEnergyDropMaxCount > 0, "invalid capacity");
+
+    const size_t cap = static_cast<size_t>(kEnergyDropMaxCount);
     if (g_energyDrops.size() < cap) {
         g_energyDrops.push_back(drop);
         return;
@@ -146,34 +162,6 @@ void PushEnergyDropCapped(const EnergyDrop& drop) {
 
     g_energyDrops[start] = drop;
     g_energyDropOverflowCursor = (start + 1U) % size;
-}
-
-int GetEnergyDropCount(const GameData::EnemyDefinition& enemyDef) {
-    switch (enemyDef.tier) {
-    case GameData::EnemyTier::Boss:
-        return 22;
-    case GameData::EnemyTier::Elite:
-        return 12;
-    case GameData::EnemyTier::Normal:
-        return 6;
-    }
-    return 6;
-}
-
-int GetEnergyDropValue(const GameData::EnemyDefinition& enemyDef) {
-    switch (enemyDef.tier) {
-    case GameData::EnemyTier::Boss:
-        return 3;
-    case GameData::EnemyTier::Elite:
-        return 1;
-    case GameData::EnemyTier::Normal:
-        return 1;
-    }
-    return 1;
-}
-
-EnergyDropRule GetEnergyDropRule(const GameData::EnemyDefinition& enemyDef) {
-    return { GetEnergyDropCount(enemyDef), GetEnergyDropValue(enemyDef) };
 }
 
 void SpawnSingleDrop(EnergyDrop::Kind kind, int centerX, int centerY, int value) {
@@ -215,17 +203,33 @@ PotionDropRates GetEnemyPotionDropRates(const GameData::EnemyDefinition& enemyDe
     return {};
 }
 
-bool TrySpawnPotionDropByRates(int centerX, int centerY, PotionDropRates rates) {
+PotionDropRates GetCratePotionDropRates() {
+    return { 0, kPotionDropChanceCrateEnergyPercent, kPotionDropChanceCrateLifePercent };
+}
+
+PotionDropRates GetBossPotionDropRates() {
+    return {
+        kPotionDropChanceBossRecoverPercent,
+        kPotionDropChanceBossEnergyPercent,
+        kPotionDropChanceBossLifePercent
+    };
+}
+
+bool TrySpawnPotionDropFromRates(int centerX, int centerY, PotionDropRates rates) {
     const int roll = std::rand() % kPercentBase;
-    if (roll < rates.recoverPercent) {
+    const int recoverLimit = rates.recoverPercent;
+    const int energyLimit = recoverLimit + rates.energyPercent;
+    const int lifeLimit = energyLimit + rates.lifePercent;
+
+    if (roll < recoverLimit) {
         SpawnSingleDrop(EnergyDrop::Kind::RecoverPotion, centerX, centerY, 0);
         return true;
     }
-    if (roll < rates.recoverPercent + rates.energyPercent) {
+    if (roll < energyLimit) {
         SpawnSingleDrop(EnergyDrop::Kind::EnergyPotion, centerX, centerY, 0);
         return true;
     }
-    if (roll < rates.recoverPercent + rates.energyPercent + rates.lifePercent) {
+    if (roll < lifeLimit) {
         SpawnSingleDrop(EnergyDrop::Kind::LifePotion, centerX, centerY, 0);
         return true;
     }
@@ -234,17 +238,14 @@ bool TrySpawnPotionDropByRates(int centerX, int centerY, PotionDropRates rates) 
 
 bool TrySpawnPotionDropOnEnemyDeath(int centerX, int centerY, const GameData::EnemyDefinition& enemyDef) {
     const PotionDropRates rates = GetEnemyPotionDropRates(enemyDef);
-    if (rates.recoverPercent == 0 && rates.energyPercent == 0 && rates.lifePercent == 0) {
+    if (!HasPotionDropChance(rates)) {
         return false;
     }
-    return TrySpawnPotionDropByRates(centerX, centerY, rates);
+    return TrySpawnPotionDropFromRates(centerX, centerY, rates);
 }
 
 void TrySpawnPotionDropOnCrateDestroyed(int centerX, int centerY) {
-    TrySpawnPotionDropByRates(
-        centerX,
-        centerY,
-        PotionDropRates{ 0, kPotionDropChanceCrateEnergyPercent, kPotionDropChanceCrateLifePercent });
+    TrySpawnPotionDropFromRates(centerX, centerY, GetCratePotionDropRates());
 }
 
 POINT BossPotionDropPoint(int centerX, int centerY) {
@@ -269,30 +270,23 @@ POINT BossPotionDropPoint(int centerX, int centerY) {
 
 void TrySpawnPotionDropWithBossRates(int centerX, int centerY) {
     const POINT dropPoint = BossPotionDropPoint(centerX, centerY);
-    TrySpawnPotionDropByRates(
-        dropPoint.x,
-        dropPoint.y,
-        PotionDropRates{
-            kPotionDropChanceBossRecoverPercent,
-            kPotionDropChanceBossEnergyPercent,
-            kPotionDropChanceBossLifePercent
-        });
+    TrySpawnPotionDropFromRates(dropPoint.x, dropPoint.y, GetBossPotionDropRates());
 }
 
-}  
+}
 
 void SpawnEnergyDropsOnEnemyDeath(int centerX, int centerY, const GameData::EnemyDefinition& enemyDef) {
     if (TrySpawnPotionDropOnEnemyDeath(centerX, centerY, enemyDef)) {
         return;
     }
 
-    const EnergyDropRule dropRule = GetEnergyDropRule(enemyDef);
-    if (dropRule.count <= 0 || dropRule.value <= 0) {
+    const EnergyDropReward reward = GetEnemyEnergyDropReward(enemyDef);
+    if (reward.count <= 0 || reward.value <= 0) {
         return;
     }
 
-    for (int i = 0; i < dropRule.count; ++i) {
-        SpawnSingleDrop(EnergyDrop::Kind::Energy, centerX, centerY, dropRule.value);
+    for (int i = 0; i < reward.count; ++i) {
+        SpawnSingleDrop(EnergyDrop::Kind::Energy, centerX, centerY, reward.value);
     }
 }
 
@@ -302,6 +296,24 @@ void SpawnDropsOnCrateDestroyed(int centerX, int centerY) {
 
 void TrySpawnPotionDropOnBossHpLossThreshold(int centerX, int centerY) {
     TrySpawnPotionDropWithBossRates(centerX, centerY);
+}
+
+void RemoveInactiveEnergyDrops() {
+    size_t writeIndex = 0;
+    for (size_t i = 0; i < g_energyDrops.size(); ++i) {
+        if (!g_energyDrops[i].active) {
+            continue;
+        }
+        if (writeIndex != i) {
+            g_energyDrops[writeIndex] = g_energyDrops[i];
+        }
+        ++writeIndex;
+    }
+
+    g_energyDrops.resize(writeIndex);
+    if (g_energyDropOverflowCursor >= g_energyDrops.size()) {
+        g_energyDropOverflowCursor = 0;
+    }
 }
 
 void UpdateEnergyDrops() {
@@ -343,20 +355,7 @@ void UpdateEnergyDrops() {
         return;
     }
 
-    size_t writeIndex = 0;
-    for (size_t i = 0; i < g_energyDrops.size(); ++i) {
-        if (!g_energyDrops[i].active) {
-            continue;
-        }
-        if (writeIndex != i) {
-            g_energyDrops[writeIndex] = g_energyDrops[i];
-        }
-        ++writeIndex;
-    }
-    g_energyDrops.resize(writeIndex);
-    if (g_energyDropOverflowCursor >= g_energyDrops.size()) {
-        g_energyDropOverflowCursor = 0;
-    }
+    RemoveInactiveEnergyDrops();
 }
 
 void DrawEnergyDropsLayered(int minYInclusive, int maxYExclusive) {
@@ -395,4 +394,4 @@ void DrawEnergyDropsLayered(int minYInclusive, int maxYExclusive) {
     }
 }
 
-}  
+}

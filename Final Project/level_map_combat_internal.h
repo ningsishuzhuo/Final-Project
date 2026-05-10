@@ -1,6 +1,8 @@
 #ifndef LEVEL_MAP_COMBAT_INTERNAL_H
 #define LEVEL_MAP_COMBAT_INTERNAL_H
 
+#include "game_data.h"
+
 #include <windows.h>
 
 namespace LevelMapInternal {
@@ -18,9 +20,10 @@ float DistanceSquaredToSegment(
     float y2,
     float& outNearestRelX,
     float& outNearestRelY);
+int GetEnemyProjectileDamageByTier(GameData::EnemyTier tier);
 void ApplyDamageToCurrentEnemy(int damage, bool allowSunCriticalPassive = false);
 void SpawnApolloSlashAttack(int clickScreenX, int clickScreenY);
 
-}  
+}
 
-#endif  
+#endif

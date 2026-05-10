@@ -32,6 +32,20 @@ void UpdatePlayerDashAfterimages(ULONGLONG now) {
     g_playerDashAfterimages.resize(writeIndex);
 }
 
+void PushDashAfterimage(const DashAfterimage& image) {
+    static_assert(kDashAfterimageReserveCount > 0, "invalid capacity");
+
+    if (g_playerDashAfterimages.size() < static_cast<size_t>(kDashAfterimageReserveCount)) {
+        g_playerDashAfterimages.push_back(image);
+        return;
+    }
+
+    for (size_t i = 1; i < g_playerDashAfterimages.size(); ++i) {
+        g_playerDashAfterimages[i - 1] = g_playerDashAfterimages[i];
+    }
+    g_playerDashAfterimages.back() = image;
+}
+
 void SpawnPlayerDashAfterimage(ULONGLONG now) {
     if (!g_isDashing || !g_isMoving) {
         return;
@@ -47,7 +61,7 @@ void SpawnPlayerDashAfterimage(ULONGLONG now) {
     image.faceRight = g_faceRight;
     image.moving = g_isMoving;
     image.createdTick = now;
-    PushCapped(g_playerDashAfterimages, image, kDashAfterimageReserveCount);
+    PushDashAfterimage(image);
     g_lastAfterimageSpawnTick = now;
 }
 

@@ -120,6 +120,7 @@ void UpdateActiveEnemyAIInternal(ULONGLONG now) {
     const float dx = static_cast<float>(g_playerX - g_enemy.x);
     const float dy = static_cast<float>(g_playerY - g_enemy.y);
     const float distSquared = dx * dx + dy * dy;
+    // 迟滞距离用于避免可见性在边界反复抖动。
     const float trackingDistance = g_enemySawPlayerLastFrame ? kEnemyLosePlayerDistance : kEnemyAcquirePlayerDistance;
     bool canSeePlayer = distSquared <= trackingDistance * trackingDistance;
     if (!canSeePlayer && enemyDef.kind == GameData::EnemyKind::SnowApeKing) {
@@ -155,7 +156,7 @@ void UpdateActiveEnemyAIInternal(ULONGLONG now) {
     }
 }
 
-}  
+}
 
 void UpdateIcefieldEnemyWaveAI(ULONGLONG now) {
     UpdateIcefieldEnemyWaveAIImpl(now);
@@ -179,7 +180,7 @@ void UpdateEnemyAI(ULONGLONG now) {
     UpdateActiveEnemyAIInternal(now);
 }
 
-}  
+}
 
 
 

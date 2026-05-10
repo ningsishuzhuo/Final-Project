@@ -4,6 +4,69 @@
 
 namespace LevelMapInternal {
 namespace {
+
+enum class HudFallbackIcon {
+    Circle,
+    Square
+};
+
+void DrawResultOverlay(ULONGLONG now, ULONGLONG startTick, const TCHAR* title) {
+    constexpr ULONGLONG kGameOverFadeInMs = 700ULL;
+    const ULONGLONG elapsed =
+        (startTick > 0 && now >= startTick) ? (now - startTick) : 0ULL;
+    float progress = static_cast<float>(elapsed) / static_cast<float>(kGameOverFadeInMs);
+    if (progress < 0.0f) {
+        progress = 0.0f;
+    }
+    if (progress > 1.0f) {
+        progress = 1.0f;
+    }
+
+    constexpr int kTargetTextR = 220;
+    constexpr int kTargetTextG = 226;
+    constexpr int kTargetTextB = 236;
+    const int r = static_cast<int>(static_cast<float>(kTargetTextR) * progress);
+    const int g = static_cast<int>(static_cast<float>(kTargetTextG) * progress);
+    const int b = static_cast<int>(static_cast<float>(kTargetTextB) * progress);
+    const COLORREF revealColor = RGB(r, g, b);
+
+    setbkmode(TRANSPARENT);
+
+    settextstyle(104, 0, _T("Type"), 0, 0, FW_BLACK, false, false, false);
+    settextcolor(revealColor);
+    RECT gameOverRect = { 0, GAME_WINDOW_HEIGHT / 2 - 130, GAME_WINDOW_WIDTH, GAME_WINDOW_HEIGHT / 2 + 30 };
+    drawtext(title, &gameOverRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    if (elapsed >= kResultReturnDelayMs) {
+        settextstyle(24, 0, _T("宋体"));
+        settextcolor(revealColor);
+        RECT hintRect = { 0, GAME_WINDOW_HEIGHT - 72, GAME_WINDOW_WIDTH, GAME_WINDOW_HEIGHT - 24 };
+        drawtext(_T("按任意键返回"), &hintRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+}
+
+void DrawHudIcon(
+    const IMAGE& image,
+    bool hasAlpha,
+    int x,
+    int y,
+    int size,
+    COLORREF fallbackColor,
+    HudFallbackIcon fallbackIcon) {
+    if (RenderUtils::HasImage(image)) {
+        RenderUtils::DrawImageAuto(image, hasAlpha, x, y, size, size);
+        return;
+    }
+
+    setfillcolor(fallbackColor);
+    if (fallbackIcon == HudFallbackIcon::Circle) {
+        solidcircle(x + size / 2, y + size / 2, size / 2);
+        return;
+    }
+
+    solidrectangle(x, y, x + size, y + size);
+}
+
 void DrawHudDebugInfo(ULONGLONG now) {
     TCHAR info[512] = { 0 };
     const ULONGLONG dashCooldownMs =
@@ -41,29 +104,30 @@ void DrawHudDebugInfo(ULONGLONG now) {
     RECT descRect = { 20, 70, GAME_WINDOW_WIDTH - 20, 100 };
     drawtext(info, &descRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 }
-}  
+}
+
+void DrawGameOverOverlay(ULONGLONG now) {
+    DrawResultOverlay(now, g_playerDeathStartTick, _T("GAME OVER"));
+}
+
+void DrawVictoryOverlay(ULONGLONG now) {
+    DrawResultOverlay(now, g_gameVictoryStartTick, _T("VICTORY"));
+}
+
 void DrawHud(ULONGLONG now) {
     const int hpIconX = kPlayerHpHudLeft;
     const int hpIconY = kPlayerHpHudTop;
     const int statusRowHeight = kPlayerHpIconDrawSize + 6;
     const int valueLeftX = hpIconX + kPlayerHpIconDrawSize + 10;
     const int valueRightX = hpIconX + kPlayerHpIconDrawSize + 170;
-    if (RenderUtils::HasImage(g_playerHpIconImage)) {
-        RenderUtils::DrawImageAuto(
-            g_playerHpIconImage,
-            g_playerHpIconHasAlpha,
-            hpIconX,
-            hpIconY,
-            kPlayerHpIconDrawSize,
-            kPlayerHpIconDrawSize);
-    }
-    else {
-        setfillcolor(RGB(220, 42, 52));
-        solidcircle(
-            hpIconX + kPlayerHpIconDrawSize / 2,
-            hpIconY + kPlayerHpIconDrawSize / 2,
-            kPlayerHpIconDrawSize / 2);
-    }
+    DrawHudIcon(
+        g_playerHpIconAsset.image,
+        g_playerHpIconAsset.hasAlpha,
+        hpIconX,
+        hpIconY,
+        kPlayerHpIconDrawSize,
+        RGB(220, 42, 52),
+        HudFallbackIcon::Circle);
 
     TCHAR hpText[64] = { 0 };
     _stprintf_s(hpText, _countof(hpText), _T("%d/%d"), g_playerHp, g_playerMaxHp);
@@ -80,36 +144,22 @@ void DrawHud(ULONGLONG now) {
     const int armorY = hpIconY + statusRowHeight;
     const int energyY = armorY + statusRowHeight;
 
-    if (RenderUtils::HasImage(g_playerArmorIconImage)) {
-        RenderUtils::DrawImageAuto(
-            g_playerArmorIconImage,
-            g_playerArmorIconHasAlpha,
-            hpIconX,
-            armorY,
-            kPlayerHpIconDrawSize,
-            kPlayerHpIconDrawSize);
-    }
-    else {
-        setfillcolor(RGB(190, 196, 206));
-        solidrectangle(hpIconX, armorY, hpIconX + kPlayerHpIconDrawSize, armorY + kPlayerHpIconDrawSize);
-    }
-
-    if (RenderUtils::HasImage(g_playerEnergyIconImage)) {
-        RenderUtils::DrawImageAuto(
-            g_playerEnergyIconImage,
-            g_playerEnergyIconHasAlpha,
-            hpIconX,
-            energyY,
-            kPlayerHpIconDrawSize,
-            kPlayerHpIconDrawSize);
-    }
-    else {
-        setfillcolor(RGB(98, 210, 255));
-        solidcircle(
-            hpIconX + kPlayerHpIconDrawSize / 2,
-            energyY + kPlayerHpIconDrawSize / 2,
-            kPlayerHpIconDrawSize / 2);
-    }
+    DrawHudIcon(
+        g_playerArmorIconAsset.image,
+        g_playerArmorIconAsset.hasAlpha,
+        hpIconX,
+        armorY,
+        kPlayerHpIconDrawSize,
+        RGB(190, 196, 206),
+        HudFallbackIcon::Square);
+    DrawHudIcon(
+        g_playerEnergyIconAsset.image,
+        g_playerEnergyIconAsset.hasAlpha,
+        hpIconX,
+        energyY,
+        kPlayerHpIconDrawSize,
+        RGB(98, 210, 255),
+        HudFallbackIcon::Circle);
 
     TCHAR armorText[64] = { 0 };
     TCHAR energyText[64] = { 0 };
@@ -138,4 +188,4 @@ void DrawHud(ULONGLONG now) {
         DrawHudDebugInfo(now);
     }
 }
-}  
+}

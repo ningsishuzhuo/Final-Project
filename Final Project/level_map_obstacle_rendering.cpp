@@ -65,6 +65,18 @@ void DrawSingleObstacle(const MapObstacle& obstacle) {
     solidrectangle(drawX, drawY, drawX + obstacle.width, drawY + obstacle.height);
 }
 
+void UpdateTorchFrame(ULONGLONG& lastUpdateTick) {
+    if (!Assets().torchGif.IsLoaded()) {
+        return;
+    }
+
+    const ULONGLONG now = RenderUtils::NowTickMs();
+    if (now != lastUpdateTick) {
+        RenderUtils::UpdateAnimatedGifFrame(Assets().torchGif);
+        lastUpdateTick = now;
+    }
+}
+
 }  
 
 void LoadMapObstacleAssets() {
@@ -93,14 +105,8 @@ void DrawMapObstacles() {
 }
 
 void DrawGroundObstacles() {
-    if (Assets().torchGif.IsLoaded()) {
-        static ULONGLONG s_lastTorchUpdateTick = 0;
-        const ULONGLONG now = RenderUtils::NowTickMs();
-        if (now != s_lastTorchUpdateTick) {
-            RenderUtils::UpdateAnimatedGifFrame(Assets().torchGif);
-            s_lastTorchUpdateTick = now;
-        }
-    }
+    static ULONGLONG s_lastTorchUpdateTick = 0;
+    UpdateTorchFrame(s_lastTorchUpdateTick);
 
     for (const MapObstacle& obstacle : Obstacles()) {
         if (obstacle.destructible && obstacle.destroyed) {
@@ -114,14 +120,8 @@ void DrawGroundObstacles() {
 }
 
 void DrawMapObstaclesLayered(int minYInclusive, int maxYExclusive) {
-    if (Assets().torchGif.IsLoaded()) {
-        static ULONGLONG s_lastTorchUpdateTick = 0;
-        const ULONGLONG now = RenderUtils::NowTickMs();
-        if (now != s_lastTorchUpdateTick) {
-            RenderUtils::UpdateAnimatedGifFrame(Assets().torchGif);
-            s_lastTorchUpdateTick = now;
-        }
-    }
+    static ULONGLONG s_lastTorchUpdateTick = 0;
+    UpdateTorchFrame(s_lastTorchUpdateTick);
 
     for (const MapObstacle& obstacle : Obstacles()) {
         if (obstacle.destructible && obstacle.destroyed) {

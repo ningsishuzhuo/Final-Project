@@ -17,26 +17,7 @@
 #include <graphics.h>
 #include <windows.h>
 
-#include <vector>
-
 namespace LevelMapInternal {
-
-template <typename T>
-void PushCapped(std::vector<T>& items, const T& item, size_t maxCount) {
-    if (maxCount == 0) {
-        return;
-    }
-
-    if (items.size() < maxCount) {
-        items.push_back(item);
-        return;
-    }
-
-    for (size_t i = 1; i < items.size(); ++i) {
-        items[i - 1] = items[i];
-    }
-    items.back() = item;
-}
 
 }  
 

@@ -1,9 +1,12 @@
 #include "menu_render_utils.h"
 
+#include "asset_paths.h"
 #include "globals.h"
 #include "render_utils.h"
 
 #include <tchar.h>
+#include <windows.h>
+#include <wingdi.h>
 
 namespace MenuRenderUtils {
 namespace {
@@ -13,6 +16,11 @@ constexpr COLORREF kGlyphShadowColor = RGB(8, 14, 22);
 
 constexpr int kFallbackButtonWidth = 178;
 constexpr int kFallbackButtonHeight = 60;
+constexpr const TCHAR* kMenuFontFace = _T("Type");
+constexpr const TCHAR* kFallbackFontFace = _T("黑体");
+
+int g_menuFontUsers = 0;
+bool g_menuFontLoaded = false;
 
 bool IsNearWhite(COLORREF color) {
     return GetRValue(color) > 245 && GetGValue(color) > 245 && GetBValue(color) > 245;
@@ -115,6 +123,10 @@ void DrawFallbackButton(const Button& button) {
     outtextxy(button.x + (button.width - textW) / 2, button.y + (button.height - textH) / 2, button.text);
 }
 
+const TCHAR* GetMenuFontFace() {
+    return g_menuFontLoaded ? kMenuFontFace : kFallbackFontFace;
+}
+
 }  
 
 void ColorizeGlyphImage(const IMAGE& source, IMAGE& target, COLORREF baseColor) {
@@ -182,6 +194,49 @@ void DrawMainMenuButton(const Button& button) {
         fallbackButton.height = kFallbackButtonHeight;
     }
     DrawFallbackButton(fallbackButton);
+}
+
+void AcquireMenuFont() {
+    ++g_menuFontUsers;
+    if (g_menuFontLoaded) {
+        return;
+    }
+
+    const int added = AddFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
+    g_menuFontLoaded = (added > 0);
+}
+
+void ReleaseMenuFont() {
+    if (g_menuFontUsers <= 0) {
+        return;
+    }
+
+    --g_menuFontUsers;
+    if (g_menuFontUsers == 0 && g_menuFontLoaded) {
+        RemoveFontResourceEx(AssetPaths::GetTypeFontPath(), FR_PRIVATE, nullptr);
+        g_menuFontLoaded = false;
+    }
+}
+
+void DrawShadowedText(
+    const TCHAR* text,
+    const RECT& rect,
+    int fontSize,
+    COLORREF mainColor,
+    COLORREF shadowColor,
+    int shadowOffset,
+    UINT format) {
+    setbkmode(TRANSPARENT);
+    settextstyle(fontSize, 0, GetMenuFontFace());
+
+    RECT shadowRect = rect;
+    OffsetRect(&shadowRect, shadowOffset, shadowOffset);
+    settextcolor(shadowColor);
+    drawtext(text, &shadowRect, format);
+
+    RECT textRect = rect;
+    settextcolor(mainColor);
+    drawtext(text, &textRect, format);
 }
 
 }  

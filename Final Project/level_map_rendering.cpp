@@ -36,8 +36,8 @@ void RenderLevelFrame(ULONGLONG now) {
         DrawEnemyProjectileArrayLayered(enemyBulletDrawWidth, enemyBulletDrawHeight, INT_MIN, INT_MAX);
         DrawProjectileArrayLayered(
             g_playerProjectiles,
-            g_particleImage,
-            g_particleHasAlpha,
+            g_particleAsset.image,
+            g_particleAsset.hasAlpha,
             kPlayerProjectileDrawW,
             kPlayerProjectileDrawH,
             INT_MIN,
@@ -58,8 +58,8 @@ void RenderLevelFrame(ULONGLONG now) {
         DrawEnemyProjectileArrayLayered(enemyBulletDrawWidth, enemyBulletDrawHeight, INT_MIN, backFootY);
         DrawProjectileArrayLayered(
             g_playerProjectiles,
-            g_particleImage,
-            g_particleHasAlpha,
+            g_particleAsset.image,
+            g_particleAsset.hasAlpha,
             kPlayerProjectileDrawW,
             kPlayerProjectileDrawH,
             INT_MIN,
@@ -83,8 +83,8 @@ void RenderLevelFrame(ULONGLONG now) {
         DrawEnemyProjectileArrayLayered(enemyBulletDrawWidth, enemyBulletDrawHeight, backFootY, frontFootY);
         DrawProjectileArrayLayered(
             g_playerProjectiles,
-            g_particleImage,
-            g_particleHasAlpha,
+            g_particleAsset.image,
+            g_particleAsset.hasAlpha,
             kPlayerProjectileDrawW,
             kPlayerProjectileDrawH,
             backFootY,
@@ -106,8 +106,8 @@ void RenderLevelFrame(ULONGLONG now) {
         DrawEnemyProjectileArrayLayered(enemyBulletDrawWidth, enemyBulletDrawHeight, frontFootY, INT_MAX);
         DrawProjectileArrayLayered(
             g_playerProjectiles,
-            g_particleImage,
-            g_particleHasAlpha,
+            g_particleAsset.image,
+            g_particleAsset.hasAlpha,
             kPlayerProjectileDrawW,
             kPlayerProjectileDrawH,
             frontFootY,

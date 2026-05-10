@@ -145,8 +145,8 @@ void DrawUltimateCooldownHud(ULONGLONG now) {
         return;
     }
 
-    const IMAGE& colorIcon = g_ultimateCooldownIconImages[g_currentCharacterIndex];
-    const IMAGE& grayIcon = g_ultimateCooldownGrayIconImages[g_currentCharacterIndex];
+    const IMAGE& colorIcon = g_ultimateCooldownIconAssets[g_currentCharacterIndex].image;
+    const IMAGE& grayIcon = g_ultimateCooldownGrayIconAssets[g_currentCharacterIndex].image;
     if (!RenderUtils::HasImage(colorIcon) || !RenderUtils::HasImage(grayIcon)) {
         return;
     }
@@ -154,9 +154,9 @@ void DrawUltimateCooldownHud(ULONGLONG now) {
     const int iconSize = kUltimateHudIconDrawSize;
     const int iconX = GAME_WINDOW_WIDTH - kUltimateHudIconRight - iconSize;
     const int iconY = kUltimateHudIconTop;
-    const bool colorAlpha = g_ultimateCooldownIconHasAlpha[g_currentCharacterIndex];
+    const bool colorAlpha = g_ultimateCooldownIconAssets[g_currentCharacterIndex].hasAlpha;
     const bool compositeAlpha =
-        colorAlpha || g_ultimateCooldownGrayIconHasAlpha[g_currentCharacterIndex];
+        colorAlpha || g_ultimateCooldownGrayIconAssets[g_currentCharacterIndex].hasAlpha;
     static IMAGE compositeIcon;
     static bool visibleBoundsCached[kCharacterCount] = {};
     static int visibleTop[kCharacterCount] = {};

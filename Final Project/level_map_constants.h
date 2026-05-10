@@ -9,6 +9,8 @@
 
 namespace LevelMapInternal {
 
+constexpr float kPi = 3.14159265f;
+
 constexpr int kCharacterCount = AssetPaths::CHARACTER_COUNT;
 
 constexpr ULONGLONG kResultReturnDelayMs = 3000ULL;
@@ -227,6 +229,6 @@ constexpr ULONGLONG kEmpoweredShockwaveLockDelayMs = 520ULL;
 constexpr int kNormalShockwaveTelegraphRadius = 14;
 constexpr int kEmpoweredShockwaveTelegraphRadius = 20;
 
-}  
+}
 
-#endif  
+#endif
